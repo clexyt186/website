@@ -78,9 +78,4 @@ document.addEventListener("DOMContentLoaded", () => {
     bookButton.addEventListener("click", () => {
         window.open("https://calendar.app.google/GVbGSUdeh2auEGBX7", "_blank");
     });
-
-    // ✅ Open iKhokha payment link (after booking)
-    setTimeout(() => {
-        window.open("YOUR_IKHOKHA_PAYMENT_LINK", "_blank");
-    }, 5000); // Opens payment link 5 seconds after booking
 });
