@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (bookLink) {
         bookLink.addEventListener("click", () => {
-            window.open("https://calendar.app.google/EEFcSKDNxTCZHiQk9", "_blank");
+            window.open("https://calendly.com/cletusmulaudi32/1", "_blank");
         });
     }
 
@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ✅ Open Google Calendar booking link
     bookButton.addEventListener("click", () => {
-        window.open("https://calendar.app.google/EEFcSKDNxTCZHiQk9", "_blank");
+        window.open("https://calendly.com/cletusmulaudi32/1", "_blank");
     });
 });
 document.addEventListener("DOMContentLoaded", () => {
@@ -76,6 +76,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ✅ Open Google Calendar booking link
     bookButton.addEventListener("click", () => {
-        window.open("https://calendar.app.google/GVbGSUdeh2auEGBX7", "_blank");
+        window.open("https://calendly.com/cletusmulaudi32/1", "_blank");
     });
 });
