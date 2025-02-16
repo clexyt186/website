@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (bookLink) {
         bookLink.addEventListener("click", () => {
-            window.open("https://yourbookinglink.com", "_blank");
+            window.open("https://calendar.app.google/EEFcSKDNxTCZHiQk9", "_blank");
         });
     }
 
