@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Portfolio</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <header>
+        <!-- Hamburger Menu Button -->
+        <button class="hamburger-menu" id="menu-toggle">☰</button>
+        <nav id="menu">
+            <ul>
+                <li><a href="#" id="home-link">Home</a></li>
+                <li><a href="#" id="book-link">Book Now</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="#portfolio">Portfolio</a></li>
+            </ul>
+        </nav>
+        <h1>Welcome </h1>
+        <p></p>
+    </header>
+
+    <main>
+        <!-- Booking Section -->
+        <section id="booking">
+            <h2>Book My Services</h2>
+            <p>Secure your spot </p>
+            <button id="book-now">Book Now</button>
+        </section>
+
+        <!-- Portfolio Section -->
+        <section id="portfolio">
+            <h2>My Work</h2>
+            <p class="instruction-text">Tap on any image 😊</p>
+            <div class="gallery">
+                <img src="images/event1-thumb.jpg" alt="Event 1" class="portfolio-item" data-full="images/event1-panorama.jpg">
+                <img src="images/event2-thumb.jpg" alt="Event 2" class="portfolio-item" data-full="images/event2-panorama.jpg">
+                <img src="images/event3-thumb.jpg" alt="Event 3" class="portfolio-item" data-full="images/event3-panorama.jpg">
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Clexyt186 | <a href="https://instagram.com/clexyt14" target="_blank">
+            <img src="images/instagram-icon.png" alt="Instagram" class="social-icon"> @clexyt14</a>
+        </p>
+    </footer>
+
+    <!-- Lightbox Modal (Gallery Pop-up) -->
+    <div id="lightbox">
+        <div id="lightbox-content">
+            <button id="close-lightbox">Close</button>
+            <button id="prev-button">◀</button>
+            <div id="lightbox-image-container">
+                <img id="lightbox-image" src="" alt="Full Image">
+            </div>
+            <button id="next-button">▶</button>
+        </div>
+    </div>
+</body>
+</html>

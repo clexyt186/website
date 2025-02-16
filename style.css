@@ -1,0 +1,251 @@
+/* Dark Mode Styling */
+body {
+    background-color: #121212;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    padding: 20px;
+    background-color: #1e1e1e;
+}
+
+h1, h2 {
+    color: #ffffff;
+}
+
+.instruction-text {
+    font-size: 14px;
+    color: #bbbbbb;
+    margin-bottom: 10px;
+}
+
+/* Portfolio Image Gallery */
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+}
+
+.gallery img {
+    width: 200px;
+    height: auto;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.3s ease-in-out;
+}
+
+.gallery img:hover {
+    transform: scale(1.1);
+}
+
+/* Hamburger Menu */
+.hamburger-menu {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 1000;
+}
+
+#menu {
+    display: none;
+    position: absolute;
+    top: 50px;
+    left: 15px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+#menu.open {
+    display: block;
+}
+
+#menu ul {
+    list-style: none;
+    padding: 0;
+}
+
+#menu ul li {
+    margin: 10px 0;
+}
+
+#menu ul li a {
+    color: white;
+    text-decoration: none;
+}
+
+/* Lightbox */
+#lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#lightbox.show {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Lightbox Content */
+#lightbox-content {
+    position: relative;
+    background: #000;
+    padding: 15px;
+    width: 90vw;
+    height: 70vh;
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Lightbox Image */
+#lightbox-image {
+    width: auto;
+    max-height: 90vh;
+    object-fit: contain;
+    cursor: grab;
+    transition: transform 0.5s ease-in-out;
+}
+
+/* Close Button */
+#close-lightbox {
+    background: #ff5722;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 5px;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+}
+
+/* Left & Right Buttons */
+#prev-button, #next-button {
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 20px;
+    color: white;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
+}
+
+#prev-button {
+    left: 10px;
+}
+
+#next-button {
+    right: 10px;
+}
+
+#prev-button:hover, #next-button:hover {
+    background: rgba(255, 255, 255, 0.6);
+}
+#book-now {
+    font-size: 20px;
+    padding: 15px 30px;
+    background-color: #ff5722;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+#book-now:hover {
+    background-color: #ff3d00;
+    transform: scale(1.1);
+}
+body {
+    background: url('images/background.jpg') no-repeat center center fixed;
+    background-size: cover;
+}
+/* Mobile Responsive Design */
+@media screen and (max-width: 768px) {
+    body {
+        font-size: 16px;
+        text-align: center;
+    }
+
+    /* Ensure the menu button is accessible */
+    .hamburger-menu {
+        font-size: 28px;
+        top: 10px;
+        left: 10px;
+    }
+
+    /* Center and adjust menu for small screens */
+    #menu {
+        width: 80%;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+    }
+
+    #menu ul {
+        display: block;
+        padding: 10px;
+    }
+
+    #menu ul li {
+        margin: 15px 0;
+    }
+
+    /* Adjust booking button size */
+    #book-now {
+        font-size: 18px;
+        padding: 12px 25px;
+        width: 90%;
+    }
+
+    /* Make gallery images more responsive */
+    .gallery img {
+        width: 100%;
+        max-width: 250px;
+    }
+
+    /* Lightbox adjustments for small screens */
+    #lightbox-content {
+        width: 95vw;
+        height: 60vh;
+    }
+
+    #lightbox-image {
+        max-height: 60vh;
+    }
+
+    /* Make footer text smaller */
+    footer p {
+        font-size: 14px;
+    }
+}
+
+
