@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (bookLink) {
         bookLink.addEventListener("click", () => {
-            window.open("https://yourbookinglink.com", "_blank");
+            window.location.href = "services.html";
         });
     }
 
@@ -68,19 +68,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ✅ Open Google Calendar booking link
     bookButton.addEventListener("click", () => {
-        window.open("https://calendar.app.google/EEFcSKDNxTCZHiQk9", "_blank");
+        window.location.href = "services.html";
     });
-});
-document.addEventListener("DOMContentLoaded", () => {
-    const bookButton = document.getElementById("book-now");
-
-    // ✅ Open Google Calendar booking link
-    bookButton.addEventListener("click", () => {
-        window.open("https://calendar.app.google/GVbGSUdeh2auEGBX7", "_blank");
-    });
-
-    // ✅ Open iKhokha payment link (after booking)
-    setTimeout(() => {
-        window.open("YOUR_IKHOKHA_PAYMENT_LINK", "_blank");
-    }, 5000); // Opens payment link 5 seconds after booking
 });
