@@ -30,7 +30,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (bookLink) {
         bookLink.addEventListener("click", () => {
+<<<<<<< HEAD
             window.location.href = "services.html";
+=======
+            window.open("https://calendly.com/cletusmulaudi32/1", "_blank");
+>>>>>>> 82d577392d1292fb367cb68ba2fe05c2ee70e088
         });
     }
 
@@ -68,6 +72,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ✅ Open Google Calendar booking link
     bookButton.addEventListener("click", () => {
+<<<<<<< HEAD
         window.location.href = "services.html";
     });
 });
+=======
+        window.open("https://calendly.com/cletusmulaudi32/1", "_blank");
+    });
+});
+document.addEventListener("DOMContentLoaded", () => {
+    const bookButton = document.getElementById("book-now");
+
+    // ✅ Open Google Calendar booking link
+    bookButton.addEventListener("click", () => {
+        window.open("https://calendly.com/cletusmulaudi32/1", "_blank");
+    });
+});
+>>>>>>> 82d577392d1292fb367cb68ba2fe05c2ee70e088
