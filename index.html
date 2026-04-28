@@ -1,369 +1,488 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CLEVITA — Media & Consulting</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230a0a0f'/><circle cx='50' cy='50' r='20' fill='none' stroke='%2300f3ff' stroke-width='4'/><circle cx='50' cy='50' r='8' fill='%2300f3ff'/></svg>">
-  <link rel="stylesheet" href="style.css">
+/* =============================================
+   CLEXYT — Main Script
+   Starfield · Cursor · Robot · Stats · Nav
+   ============================================= */
 
-<style>
-/* ========= MOBILE HERO LAYOUT ========= */
-@media (max-width: 768px) {
+'use strict';
 
-  /* Stack everything vertically */
-  .hero-inner {
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    padding-top: 5rem !important;
-    gap: 0 !important;
-  }
+// === CURSOR ===
+(function() {
+  const dot = document.querySelector('.c-dot');
+  const ring = document.querySelector('.c-ring');
+  if (!dot || !ring) return;
 
-  /* Robot — smaller, centered above buttons */
-  .robot-stage {
-    order: 0 !important;
-    width: 160px !important;
-    height: 200px !important;
-    margin: 0 auto 1rem auto !important;
-    flex-shrink: 0 !important;
-  }
-  .robot-wrap {
-    transform: scale(0.55) !important;
-    transform-origin: top center !important;
-  }
-  .robot-prompt {
-    font-size: .55rem !important;
-    bottom: -0.5rem !important;
-  }
-  .robo-particles { display: none !important; }
+  let mx = 0, my = 0, rx = 0, ry = 0;
 
-  /* Two panels side by side below robot */
-  .choice-left  { order: 1 !important; }
-  .choice-right { order: 2 !important; }
-
-  .choice-panel {
-    width: 47% !important;
-    min-width: 0 !important;
-    height: 200px !important;
-    border-radius: 8px !important;
-    flex-shrink: 0 !important;
+  function tick() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    dot.style.left = mx + 'px';
+    dot.style.top = my + 'px';
+    ring.style.left = rx + 'px';
+    ring.style.top = ry + 'px';
+    requestAnimationFrame(tick);
   }
+  tick();
 
-  /* Make the two panels sit side by side */
-  .hero-inner {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-  }
-  .choice-left, .choice-right {
-    flex: 0 0 47% !important;
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX;
+    my = e.clientY;
+  });
+
+  document.addEventListener('mousedown', () => {
+    dot.style.transform = 'translate(-50%,-50%) scale(1.8)';
+    ring.style.transform = 'translate(-50%,-50%) scale(0.7)';
+  });
+  document.addEventListener('mouseup', () => {
+    dot.style.transform = 'translate(-50%,-50%) scale(1)';
+    ring.style.transform = 'translate(-50%,-50%) scale(1)';
+  });
+})();
+
+
+// === STARFIELD (with touch + shooting stars) ===
+(function() {
+  const canvas = document.getElementById('starfield');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let W, H, stars = [], shooters = [];
+  let mx = 0, my = 0;
+  let targetMx = 0, targetMy = 0;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
   }
 
-  /* Scale down panel text */
-  .panel-content h2 {
-    font-size: 1rem !important;
-    line-height: 1.2 !important;
-  }
-  .panel-label { font-size: .55rem !important; }
-  .panel-price-hint { font-size: .7rem !important; }
-  .panel-cta {
-    font-size: .7rem !important;
-    padding: .4rem .9rem !important;
-  }
-
-  /* Glow effect on tap/press for mobile */
-  .choice-panel:active {
-    box-shadow: 0 0 30px rgba(0,240,224,0.5), 0 0 60px rgba(0,240,224,0.2) !important;
-    transform: scale(0.97) !important;
-    transition: all 0.15s ease !important;
-  }
-  .choice-right:active {
-    box-shadow: 0 0 30px rgba(240,165,0,0.5), 0 0 60px rgba(240,165,0,0.2) !important;
+  function initStars() {
+    stars = [];
+    const count = Math.floor((W * H) / 3500);
+    for (let i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.4 + 0.2,
+        a: Math.random() * 0.8 + 0.2,
+        twinkle: Math.random() * Math.PI * 2,
+        twinkleSpeed: 0.02 + Math.random() * 0.03,
+        dx: (Math.random() - .5) * 0.12,
+        dy: (Math.random() - .5) * 0.12,
+        // Some stars get a cyan or amber tint
+        hue: Math.random() < 0.08 ? 'cyan' : Math.random() < 0.05 ? 'amber' : 'white'
+      });
+    }
   }
 
-  /* Panel CTA button glow on press */
-  .panel-cta:active, .choice-panel:active .panel-cta {
-    background: var(--cyan) !important;
-    color: #000 !important;
-    box-shadow: 0 0 20px var(--cyan) !important;
+  function spawnShooter() {
+    shooters.push({
+      x: Math.random() * W * 0.7,
+      y: Math.random() * H * 0.4,
+      len: 80 + Math.random() * 120,
+      speed: 8 + Math.random() * 6,
+      angle: Math.PI / 4 + (Math.random() - 0.5) * 0.3,
+      life: 1,
+      decay: 0.018 + Math.random() * 0.015
+    });
   }
-  .choice-right:active .panel-cta {
-    background: var(--amber) !important;
-    box-shadow: 0 0 20px var(--amber) !important;
+  // Spawn shooting star every 4-8 seconds
+  spawnShooter(); setInterval(spawnShooter, 2500 + Math.random() * 2500);
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Smooth mouse follow
+    mx += (targetMx - mx) * 0.06;
+    my += (targetMy - my) * 0.06;
+
+    const px = (mx / W - .5) * 24;
+    const py = (my / H - .5) * 24;
+
+    // Draw stars
+    for (const s of stars) {
+      s.x += s.dx;
+      s.y += s.dy;
+      s.twinkle += s.twinkleSpeed;
+      if (s.x < 0) s.x = W; if (s.x > W) s.x = 0;
+      if (s.y < 0) s.y = H; if (s.y > H) s.y = 0;
+
+      const twinkleA = s.a * (0.6 + 0.4 * Math.sin(s.twinkle));
+      const ox = s.x + px * s.r * 0.4;
+      const oy = s.y + py * s.r * 0.4;
+
+      ctx.beginPath();
+      ctx.arc(ox, oy, s.r, 0, Math.PI * 2);
+
+      if (s.hue === 'cyan') {
+        ctx.fillStyle = `rgba(0,240,224,${twinkleA})`;
+        if (s.r > 1) {
+          ctx.shadowColor = 'rgba(0,240,224,0.6)';
+          ctx.shadowBlur = 4;
+        }
+      } else if (s.hue === 'amber') {
+        ctx.fillStyle = `rgba(240,165,0,${twinkleA})`;
+        if (s.r > 1) {
+          ctx.shadowColor = 'rgba(240,165,0,0.5)';
+          ctx.shadowBlur = 4;
+        }
+      } else {
+        ctx.fillStyle = `rgba(200,220,255,${twinkleA})`;
+        ctx.shadowBlur = 0;
+      }
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // Draw shooting stars
+    for (let i = shooters.length - 1; i >= 0; i--) {
+      const s = shooters[i];
+      s.x += Math.cos(s.angle) * s.speed;
+      s.y += Math.sin(s.angle) * s.speed;
+      s.life -= s.decay;
+      if (s.life <= 0) { shooters.splice(i, 1); continue; }
+
+      const grad = ctx.createLinearGradient(
+        s.x - Math.cos(s.angle) * s.len, s.y - Math.sin(s.angle) * s.len,
+        s.x, s.y
+      );
+      grad.addColorStop(0, `rgba(255,255,255,0)`);
+      grad.addColorStop(1, `rgba(255,255,255,${s.life * 0.8})`);
+      ctx.beginPath();
+      ctx.moveTo(s.x - Math.cos(s.angle) * s.len, s.y - Math.sin(s.angle) * s.len);
+      ctx.lineTo(s.x, s.y);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.5 * s.life;
+      ctx.stroke();
+    }
+
+    // Subtle grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.012)';
+    ctx.lineWidth = .5;
+    const step = 80;
+    for (let x = 0; x < W; x += step) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += step) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    requestAnimationFrame(draw);
   }
 
-  /* Hide fold edges on mobile */
-  .panel-fold-edge { display: none !important; }
+  resize();
+  initStars();
+  draw();
+  window.addEventListener('resize', () => { resize(); initStars(); });
 
-  /* Hide scroll hint on mobile */
-  .scroll-hint { display: none !important; }
+  // Mouse support
+  document.addEventListener('mousemove', e => { targetMx = e.clientX; targetMy = e.clientY; });
+
+  // Touch support for mobile parallax
+  document.addEventListener('touchmove', e => {
+    if (e.touches.length > 0) {
+      targetMx = e.touches[0].clientX;
+      targetMy = e.touches[0].clientY;
+    }
+  }, { passive: true });
+})();
+
+
+// === NAV ===
+(function() {
+  const nav = document.getElementById('nav');
+  const burger = document.getElementById('burger');
+  const mobNav = document.getElementById('mobNav');
+  if (!nav) return;
+
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 50);
+  });
+
+  if (burger && mobNav) {
+    burger.addEventListener('click', () => {
+      mobNav.classList.toggle('open');
+    });
+  }
+})();
+
+
+// === ROBOT HEAD MOUSE TRACKING (index only) ===
+(function() {
+  const head = document.getElementById('rbHead');
+  if (!head) return;
+
+  const stage = document.getElementById('robotStage');
+  const promptEl = document.getElementById('promptText');
+
+  const phrases = [
+    'Choose your path',
+    'Photography or Tech?',
+    'What are we building?',
+    'Pick a side...',
+    'Both sides are good',
+    'I present two paths'
+  ];
+  let phraseIdx = 0;
+
+  // Cycle phrases
+  setInterval(() => {
+    phraseIdx = (phraseIdx + 1) % phrases.length;
+    if (promptEl) promptEl.textContent = phrases[phraseIdx];
+  }, 3000);
+
+  // Mouse tracking for head tilt
+  document.addEventListener('mousemove', e => {
+    if (!head) return;
+    const rect = head.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = (e.clientX - cx) / window.innerWidth;
+    const dy = (e.clientY - cy) / window.innerHeight;
+    const rx = dy * -14;
+    const ry = dx * 18;
+    head.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+  });
+
+  // Panel hover: prompt update
+  const leftPanel = document.getElementById('choiceLeft');
+  const rightPanel = document.getElementById('choiceRight');
+
+  if (leftPanel) {
+    leftPanel.addEventListener('mouseenter', () => {
+      if (promptEl) promptEl.textContent = 'Photography — a great choice';
+      head.style.transform = 'rotateY(-20deg)';
+    });
+    leftPanel.addEventListener('mouseleave', () => {
+      if (promptEl) promptEl.textContent = phrases[phraseIdx];
+    });
+  }
+  if (rightPanel) {
+    rightPanel.addEventListener('mouseenter', () => {
+      if (promptEl) promptEl.textContent = 'Tech consulting — bold move';
+      head.style.transform = 'rotateY(20deg)';
+    });
+    rightPanel.addEventListener('mouseleave', () => {
+      if (promptEl) promptEl.textContent = phrases[phraseIdx];
+    });
+  }
+
+  // Ambient robot particles
+  const particleEl = document.getElementById('roboParticles');
+  if (particleEl) {
+    function spawnParticle() {
+      const p = document.createElement('div');
+      const size = Math.random() * 3 + 1;
+      const startX = 40 + Math.random() * 180;
+      const startY = 60 + Math.random() * 200;
+      p.style.cssText = `
+        position:absolute;
+        width:${size}px;height:${size}px;
+        border-radius:50%;
+        left:${startX}px;top:${startY}px;
+        background:rgba(0,240,224,${Math.random() * 0.4 + 0.1});
+        box-shadow:0 0 6px rgba(0,240,224,0.4);
+        pointer-events:none;
+        transition:all ${1.5 + Math.random() * 2}s ease-out;
+        opacity:0;
+      `;
+      particleEl.appendChild(p);
+      setTimeout(() => {
+        p.style.opacity = '1';
+        p.style.transform = `translateY(-${30 + Math.random() * 60}px) translateX(${(Math.random()-0.5)*40}px)`;
+      }, 10);
+      setTimeout(() => {
+        p.style.opacity = '0';
+        setTimeout(() => p.remove(), 600);
+      }, 1500 + Math.random() * 1000);
+    }
+    setInterval(spawnParticle, 400);
+  }
+})();
+
+
+// === STATS COUNTER ===
+(function() {
+  const nums = document.querySelectorAll('.stat-n');
+  if (!nums.length) return;
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      const target = parseInt(el.dataset.target);
+      const duration = 1600;
+      const start = performance.now();
+      function step(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const ease = 1 - Math.pow(1 - t, 3);
+        el.textContent = Math.floor(ease * target) + (target > 10 ? '+' : '');
+        if (t < 1) requestAnimationFrame(step);
+        else el.textContent = target + '+';
+      }
+      requestAnimationFrame(step);
+      observer.unobserve(el);
+    });
+  }, { threshold: .5 });
+
+  nums.forEach(n => observer.observe(n));
+})();
+
+
+// === NOTIFICATION SYSTEM (global) ===
+function showNotif(msg, type = 'success') {
+  const n = document.createElement('div');
+  n.className = 'notif ' + type;
+  n.textContent = msg;
+  document.body.appendChild(n);
+  setTimeout(() => n.classList.add('show'), 10);
+  setTimeout(() => {
+    n.classList.remove('show');
+    setTimeout(() => n.remove(), 400);
+  }, 3200);
 }
-</style>
-</head>
-<body>
+window.showNotif = showNotif;
 
-<!-- Cursor -->
-<div class="c-dot"></div>
-<div class="c-ring"></div>
 
-<!-- Animated star canvas -->
-<canvas id="starfield"></canvas>
+// === FOLD CARD ACCESSIBILITY (prevent cursor:none weirdness on touch) ===
+(function() {
+  if ('ontouchstart' in window) {
+    document.body.style.cursor = 'auto';
+    document.querySelectorAll('.c-dot,.c-ring').forEach(el => el.style.display = 'none');
+  }
+})();
 
-<!-- Nav -->
-<nav id="nav">
-  <a href="index.html" class="nav-logo">CLEVITA<span class="nav-dot"></span></a>
-  <div class="nav-links">
-    <a href="photography.html">Photography</a>
-    <a href="consulting.html">Consulting</a>
-    <a href="contact.html">Contact</a>
-    <a href="booking.html" class="nav-cta">Book Now</a>
-  </div>
-  <button class="burger" id="burger" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
-</nav>
 
-<!-- Mobile nav -->
-<div class="mob-nav" id="mobNav">
-  <a href="photography.html">Photography</a>
-  <a href="consulting.html">Consulting</a>
-  <a href="contact.html">Contact</a>
-  <a href="booking.html">Book Now</a>
-</div>
+// === BOOKING PAGE — ICS CALENDAR PARSER ===
+// Reads /calendar/calendar.ics and marks booked times
+async function loadICSCalendar() {
+  try {
+    const res = await fetch('calendar/calendar.ics');
+    if (!res.ok) return null;
+    const text = await res.text();
+    return parseICS(text);
+  } catch (e) {
+    return null;
+  }
+}
 
-<!-- HERO -->
-<main class="hero">
+function parseICS(text) {
+  const events = [];
+  const unfolded = text.replace(/\r\n[ \t]/g, '').replace(/\r\n/g, '\n');
+  const blocks = unfolded.split('BEGIN:VEVENT');
+  const now = new Date();
+  const horizon = new Date(); horizon.setMonth(horizon.getMonth() + 6);
 
-  <!-- Fold lines decoration -->
-  <div class="fold-line fold-line-1"></div>
-  <div class="fold-line fold-line-2"></div>
+  blocks.slice(1).forEach(block => {
+    const dtStartMatch = block.match(/DTSTART(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
+    const dtEndMatch   = block.match(/DTEND(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
+    const rruleMatch   = block.match(/RRULE:([^\n]+)/);
+    if (!dtStartMatch) return;
 
-  <div class="hero-inner">
+    const startIsUTC = dtStartMatch[2] === 'Z';
+    const endIsUTC   = dtEndMatch ? dtEndMatch[2] === 'Z' : startIsUTC;
+    const start = parseICSDate(dtStartMatch[1], startIsUTC);
+    const end   = dtEndMatch ? parseICSDate(dtEndMatch[1], endIsUTC) : null;
+    const durMs = end ? (end - start) : 3600000;
 
-    <!-- Left panel: photography choice -->
-    <div class="choice-panel choice-left" id="choiceLeft" onclick="window.location.href='photography.html'">
-      <div class="panel-bg panel-bg-left"></div>
-      <div class="panel-content">
-        <div class="panel-label">Visual Arts</div>
-        <h2>Photography<br>&amp; Video</h2>
-        <p>Portraits · Events · Commercial · Studio</p>
-        <div class="panel-price-hint">From <strong>R800</strong></div>
-        <div class="panel-cta">Enter <span class="arrow-icon">→</span></div>
-      </div>
-      <div class="panel-fold-edge panel-fold-edge-left"></div>
-    </div>
+    if (!rruleMatch) {
+      // Single event — only include if in future window
+      if (start >= now && start <= horizon) events.push({ start, end });
+      return;
+    }
 
-    <!-- Center: Robot -->
-    <div class="robot-stage" id="robotStage">
+    // Expand recurring event
+    const rrule = rruleMatch[1];
+    const freqM = rrule.match(/FREQ=(\w+)/);
+    const untilM = rrule.match(/UNTIL=(\d{8})/);
+    const countM = rrule.match(/COUNT=(\d+)/);
+    const byDayM = rrule.match(/BYDAY=([^;]+)/);
 
-      <!-- Small ambient particles -->
-      <div class="robo-particles" id="roboParticles"></div>
+    if (!freqM || freqM[1] !== 'WEEKLY') {
+      if (start >= now && start <= horizon) events.push({ start, end });
+      return;
+    }
 
-      <div class="robot-wrap" id="robot">
-        <!-- Head -->
-        <div class="rb-head" id="rbHead">
-          <div class="rb-antenna"><div class="rb-antenna-tip"></div></div>
-          <div class="rb-visor">
-            <div class="rb-eye rb-eye-l" id="eyeL"></div>
-            <div class="rb-eye rb-eye-r" id="eyeR"></div>
-          </div>
-          <div class="rb-mouth"></div>
-          <div class="rb-ear rb-ear-l"></div>
-          <div class="rb-ear rb-ear-r"></div>
-          <div class="rb-head-glow"></div>
-        </div>
+    // Determine which days of week to repeat on
+    const dayMap = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+    let targetDays = byDayM
+      ? byDayM[1].split(',').map(d => dayMap[d.trim().slice(-2)]).filter(d => d !== undefined)
+      : [start.getDay()];
 
-        <!-- Body -->
-        <div class="rb-body">
-          <div class="rb-chest">
-            <div class="rb-chest-light rb-chest-light-1"></div>
-            <div class="rb-chest-light rb-chest-light-2"></div>
-            <div class="rb-chest-light rb-chest-light-3"></div>
-          </div>
-          <div class="rb-core"></div>
+    const until = untilM
+      ? new Date(untilM[1].slice(0,4)+'-'+untilM[1].slice(4,6)+'-'+untilM[1].slice(6,8))
+      : horizon;
+    const maxUntil = until < horizon ? until : horizon;
+    const maxCount = countM ? parseInt(countM[1]) : 999;
 
-          <!-- Left arm: Photography -->
-          <div class="rb-arm rb-arm-l" id="rbArmL">
-            <div class="rb-upper-arm"></div>
-            <div class="rb-elbow"></div>
-            <div class="rb-lower-arm"></div>
-            <div class="rb-hand rb-hand-l">
-              <div class="rb-palm">
-                <div class="rb-offer-label rb-offer-label-l">PHOTO</div>
-              </div>
-            </div>
-          </div>
+    let count = 0;
+    // Walk week by week from start
+    let cur = new Date(start);
+    // Go back to start of that week
+    while (cur <= maxUntil && count < maxCount) {
+      for (const day of targetDays) {
+        // Find next occurrence of this weekday from cur
+        const diff = (day - cur.getDay() + 7) % 7;
+        const occ = new Date(cur);
+        occ.setDate(occ.getDate() + diff);
+        occ.setHours(start.getHours(), start.getMinutes(), 0, 0);
 
-          <!-- Right arm: Consulting -->
-          <div class="rb-arm rb-arm-r" id="rbArmR">
-            <div class="rb-upper-arm"></div>
-            <div class="rb-elbow"></div>
-            <div class="rb-lower-arm"></div>
-            <div class="rb-hand rb-hand-r">
-              <div class="rb-palm">
-                <div class="rb-offer-label rb-offer-label-r">TECH</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        if (occ < start) { continue; } // before series start
+        if (occ > maxUntil) { continue; }
+        if (count >= maxCount) { break; }
 
-        <!-- Legs -->
-        <div class="rb-legs">
-          <div class="rb-leg rb-leg-l">
-            <div class="rb-shin"></div>
-            <div class="rb-foot"></div>
-          </div>
-          <div class="rb-leg rb-leg-r">
-            <div class="rb-shin"></div>
-            <div class="rb-foot"></div>
-          </div>
-        </div>
+        if (occ >= now) {
+          const occEnd = new Date(occ.getTime() + durMs);
+          events.push({ start: occ, end: occEnd });
+        }
+        count++;
+      }
+      cur.setDate(cur.getDate() + 7);
+    }
+  });
+  return events;
+}
 
-        <div class="rb-glow-floor"></div>
-      </div>
+function parseICSDate(str, isUTC) {
+  const y=str.substr(0,4), mo=str.substr(4,2), d=str.substr(6,2);
+  const h=str.substr(9,2), mi=str.substr(11,2);
+  if (isUTC) {
+    const utc = new Date(Date.UTC(+y,+mo-1,+d,+h,+mi));
+    utc.setHours(utc.getHours()+2); // SAST = UTC+2
+    return utc;
+  }
+  return new Date(+y,+mo-1,+d,+h,+mi);
+}
 
-      <!-- Robot speech bubble -->
-      <div class="robot-prompt" id="robotPrompt">
-        <span id="promptText">Choose your path</span>
-        <div class="prompt-cursor"></div>
-      </div>
-    </div>
+function getBookedHoursForDate(events, dateStr) {
+  const parts = dateStr.split('-');
+  const targetY = parseInt(parts[0]);
+  const targetM = parseInt(parts[1]) - 1;
+  const targetD = parseInt(parts[2]);
+  const booked = [];
 
-    <!-- Right panel: consulting choice -->
-    <div class="choice-panel choice-right" id="choiceRight" onclick="window.location.href='consulting.html'">
-      <div class="panel-bg panel-bg-right"></div>
-      <div class="panel-content">
-        <div class="panel-label">Digital Solutions</div>
-        <h2>SYSTEM<br>ARCHITECTURE</h2>
-        <p>Architecture · Apps · AgriTech · Security</p>
-        <div class="panel-price-hint">Custom <strong>Quotes</strong></div>
-        <div class="panel-cta">Enter <span class="arrow-icon">→</span></div>
-      </div>
-      <div class="panel-fold-edge panel-fold-edge-right"></div>
-    </div>
+  events.forEach(ev => {
+    const s = ev.start;
+    const e = ev.end;
 
-  </div>
+    // Check if event falls on this date
+    if (s.getFullYear() !== targetY ||
+        s.getMonth()    !== targetM ||
+        s.getDate()     !== targetD) return;
 
-  <!-- Scroll hint -->
-  <div class="scroll-hint">
-    <span>Scroll to explore</span>
-    <div class="scroll-bar"></div>
-  </div>
+    // Grey out every hour the event covers
+    const startH = s.getHours();
+    const endH   = e
+      ? e.getHours() + (e.getMinutes() > 0 ? 1 : 0)
+      : startH + 1;
 
-</main>
+    for (let h = startH; h < endH; h++) {
+      const slot = String(h).padStart(2,'0') + ':00';
+      if (!booked.includes(slot)) booked.push(slot);
+    }
+  });
 
-<!-- Mini about strip -->
-<section class="about-strip">
-  <div class="strip-inner">
-    <div class="strip-stat"><span class="stat-n" data-target="150">0</span><span class="stat-l">Projects</span></div>
-    <div class="strip-divider"></div>
-    <div class="strip-stat"><span class="stat-n" data-target="50">0</span><span class="stat-l">Clients</span></div>
-    <div class="strip-divider"></div>
-    <div class="strip-stat"><span class="stat-n" data-target="5">0</span><span class="stat-l">Years</span></div>
-    <div class="strip-divider"></div>
-    <div class="strip-text">
-      <p>Based in <strong>PRETORIA, ZA</strong> — delivering creative media and technology solutions.</p>
-    </div>
-  </div>
-</section>
+  return booked;
+}
 
-<!-- Services teaser — folding card style -->
-<section class="fold-teaser">
-  <div class="fold-card" onclick="window.location.href='photography.html'">
-    <div class="fold-card-inner">
-      <div class="fold-card-front">
-        <div class="fc-icon">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="7" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="8" y="10" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M12 10V8h8v2" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-        </div>
-        <h3>Photography &amp; Video</h3>
-        <p>Professional shoots, events, studio sessions and commercial video production.</p>
-      </div>
-      <div class="fold-card-back">
-        <h4>Packages from</h4>
-        <div class="fc-price">R800</div>
-        <p>Outdoor · Studio · Video</p>
-        <div class="fc-link">View All Services →</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="fold-card" onclick="window.location.href='consulting.html'">
-    <div class="fold-card-inner">
-      <div class="fold-card-front">
-        <div class="fc-icon">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect x="4" y="6" width="24" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M12 22v4M20 22v4M8 26h16" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M10 14l4 4 8-8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <h3>SYSTEM ARCHITECTURE</h3>
-        <p>System architecture, app development, AgriTech solutions and security systems.</p>
-      </div>
-      <div class="fold-card-back">
-        <h4>Expertise in</h4>
-        <div class="fc-price">4 Domains</div>
-        <p>Architecture · Apps · AgriTech · Security</p>
-        <div class="fc-link">Start a Project →</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="fold-card" onclick="window.location.href='booking.html'">
-    <div class="fold-card-inner">
-      <div class="fold-card-front">
-        <div class="fc-icon">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect x="4" y="6" width="24" height="22" rx="2" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M10 4v4M22 4v4M4 14h24" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="16" cy="21" r="3" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-        </div>
-        <h3>Book a Session</h3>
-        <p>Choose your service, pick a time slot and confirm your booking in minutes.</p>
-      </div>
-      <div class="fold-card-back">
-        <h4>Quick booking</h4>
-        <div class="fc-price">4 Steps</div>
-        <p>Service → Time → Details → Confirm</p>
-        <div class="fc-link">Book Now →</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Footer -->
-<footer class="site-footer">
-  <div class="footer-inner">
-    <div class="footer-brand">
-      <div class="footer-logo">CLEXYT</div>
-      <p>VISUAL ARCHITECTURE &amp; SYSTEM ARCHITECTURE</p>
-      <p>PRETORIA, South Africa</p>
-    </div>
-    <div class="footer-links">
-      <a href="photography.html">Photography</a>
-      <a href="consulting.html">Consulting</a>
-      <a href="booking.html">Book Now</a>
-      <a href="contact.html">Contact</a>
-    </div>
-    <div class="footer-contact">
-      <a href="mailto:cletusmulaudi32@gmail.com">cletusmulaudi32@gmail.com</a>
-      <a href="tel:+27742959835">074 295 9835</a>
-      <a href="https://instagram.com/clexyt14" target="_blank">@clexyt14</a>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <span>&copy; 2025 CLEXYT Studio. All rights reserved.</span>
-  </div>
-</footer>
-
-<script src="script.js"></script>
-</body>
-</html>
+window.loadICSCalendar = loadICSCalendar;
+window.getBookedHoursForDate = getBookedHoursForDate;
