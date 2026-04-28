@@ -57,7 +57,7 @@
 
   function initStars() {
     stars = [];
-    const count = Math.floor((W * H) / 6000);
+    const count = Math.floor((W * H) / 3500);
     for (let i = 0; i < count; i++) {
       stars.push({
         x: Math.random() * W,
@@ -86,7 +86,7 @@
     });
   }
   // Spawn shooting star every 4-8 seconds
-  setInterval(spawnShooter, 4000 + Math.random() * 4000);
+  spawnShooter(); setInterval(spawnShooter, 2500 + Math.random() * 2500);
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
@@ -367,41 +367,90 @@ async function loadICSCalendar() {
 
 function parseICS(text) {
   const events = [];
-  // Unfold lines (ICS wraps long lines with CRLF + space)
   const unfolded = text.replace(/\r\n[ \t]/g, '').replace(/\r\n/g, '\n');
   const blocks = unfolded.split('BEGIN:VEVENT');
+  const now = new Date();
+  const horizon = new Date(); horizon.setMonth(horizon.getMonth() + 6);
 
   blocks.slice(1).forEach(block => {
-    // Match TZID format: DTSTART;TZID=...:20260428T080000
-    // Match UTC format:  DTSTART:20260428T080000Z
-    // Match plain format:DTSTART:20260428T080000
     const dtStartMatch = block.match(/DTSTART(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
     const dtEndMatch   = block.match(/DTEND(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
+    const rruleMatch   = block.match(/RRULE:([^\n]+)/);
     if (!dtStartMatch) return;
 
-    // Check if it has TZID (local SAST time) or Z (UTC) or plain (assume local)
     const startIsUTC = dtStartMatch[2] === 'Z';
     const endIsUTC   = dtEndMatch ? dtEndMatch[2] === 'Z' : startIsUTC;
-
     const start = parseICSDate(dtStartMatch[1], startIsUTC);
     const end   = dtEndMatch ? parseICSDate(dtEndMatch[1], endIsUTC) : null;
+    const durMs = end ? (end - start) : 3600000;
 
-    events.push({ start, end });
+    if (!rruleMatch) {
+      // Single event — only include if in future window
+      if (start >= now && start <= horizon) events.push({ start, end });
+      return;
+    }
+
+    // Expand recurring event
+    const rrule = rruleMatch[1];
+    const freqM = rrule.match(/FREQ=(\w+)/);
+    const untilM = rrule.match(/UNTIL=(\d{8})/);
+    const countM = rrule.match(/COUNT=(\d+)/);
+    const byDayM = rrule.match(/BYDAY=([^;]+)/);
+
+    if (!freqM || freqM[1] !== 'WEEKLY') {
+      if (start >= now && start <= horizon) events.push({ start, end });
+      return;
+    }
+
+    // Determine which days of week to repeat on
+    const dayMap = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+    let targetDays = byDayM
+      ? byDayM[1].split(',').map(d => dayMap[d.trim().slice(-2)]).filter(d => d !== undefined)
+      : [start.getDay()];
+
+    const until = untilM
+      ? new Date(untilM[1].slice(0,4)+'-'+untilM[1].slice(4,6)+'-'+untilM[1].slice(6,8))
+      : horizon;
+    const maxUntil = until < horizon ? until : horizon;
+    const maxCount = countM ? parseInt(countM[1]) : 999;
+
+    let count = 0;
+    // Walk week by week from start
+    let cur = new Date(start);
+    // Go back to start of that week
+    while (cur <= maxUntil && count < maxCount) {
+      for (const day of targetDays) {
+        // Find next occurrence of this weekday from cur
+        const diff = (day - cur.getDay() + 7) % 7;
+        const occ = new Date(cur);
+        occ.setDate(occ.getDate() + diff);
+        occ.setHours(start.getHours(), start.getMinutes(), 0, 0);
+
+        if (occ < start) { continue; } // before series start
+        if (occ > maxUntil) { continue; }
+        if (count >= maxCount) { break; }
+
+        if (occ >= now) {
+          const occEnd = new Date(occ.getTime() + durMs);
+          events.push({ start: occ, end: occEnd });
+        }
+        count++;
+      }
+      cur.setDate(cur.getDate() + 7);
+    }
   });
   return events;
 }
 
 function parseICSDate(str, isUTC) {
-  const y  = str.substr(0,4), mo = str.substr(4,2), d  = str.substr(6,2);
-  const h  = str.substr(9,2), mi = str.substr(11,2);
+  const y=str.substr(0,4), mo=str.substr(4,2), d=str.substr(6,2);
+  const h=str.substr(9,2), mi=str.substr(11,2);
   if (isUTC) {
-    // UTC time — convert to SAST (UTC+2) by adding 2 hours
-    const utc = new Date(Date.UTC(+y, +mo-1, +d, +h, +mi));
-    utc.setHours(utc.getHours() + 2);
+    const utc = new Date(Date.UTC(+y,+mo-1,+d,+h,+mi));
+    utc.setHours(utc.getHours()+2); // SAST = UTC+2
     return utc;
   }
-  // Local SAST time — treat as-is
-  return new Date(+y, +mo-1, +d, +h, +mi);
+  return new Date(+y,+mo-1,+d,+h,+mi);
 }
 
 function getBookedHoursForDate(events, dateStr) {
