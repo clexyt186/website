@@ -1222,8 +1222,10 @@ nav.scrolled { background: rgba(10,10,16,0.95); }
 
 @media (max-width: 768px) {
   /* BURGER + NAV — all pages */
+  body { cursor: auto !important; }
   .nav-links { display: none !important; }
-  .burger { display: flex !important; }
+  .burger { display: flex !important; cursor: pointer !important; pointer-events: all !important; }
+  .burger span { pointer-events: none !important; }
 
   /* OTHER PAGES */
   .strip-inner { flex-wrap: wrap; justify-content: center; }
@@ -1253,15 +1255,17 @@ nav.scrolled { background: rgba(10,10,16,0.95); }
     order: 0 !important;
     flex: 0 0 100% !important;
     width: 100% !important;
-    height: 120px !important;
+    height: 115px !important;
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    justify-content: flex-end !important;
-    margin-bottom: 0.1rem !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+    margin-bottom: 0 !important;
   }
   .robot-wrap {
+    animation: none !important;
     transform: scale(0.34) !important;
     transform-origin: top center !important;
   }
@@ -1326,7 +1330,8 @@ nav.scrolled { background: rgba(10,10,16,0.95); }
   .fold-line { display: none !important; }
 
   /* Tighten space after panels */
-  .about-strip { margin-top: 0.3rem !important; padding: 1.2rem 1rem !important; }
+  .hero { min-height: auto !important; }
+  .about-strip { margin-top: 0 !important; padding: 1rem 1rem !important; }
   .stat-n { font-size: 1.4rem !important; }
   .fold-teaser { padding: 2rem 0 !important; }
 }
