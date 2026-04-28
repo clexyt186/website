@@ -1,12 +1,13 @@
 /* =============================================
    CLEXYT — Main Script
-   Starfield · Cursor · Robot · Stats · Nav
+   Starfield · Cursor · Robot · Stats · Nav · ICS
    ============================================= */
 
 'use strict';
 
-// === CURSOR ===
+// === CURSOR (hidden on touch devices) ===
 (function() {
+  if ('ontouchstart' in window) return;
   const dot = document.querySelector('.c-dot');
   const ring = document.querySelector('.c-ring');
   if (!dot || !ring) return;
@@ -24,11 +25,7 @@
   }
   tick();
 
-  document.addEventListener('mousemove', e => {
-    mx = e.clientX;
-    my = e.clientY;
-  });
-
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
   document.addEventListener('mousedown', () => {
     dot.style.transform = 'translate(-50%,-50%) scale(1.8)';
     ring.style.transform = 'translate(-50%,-50%) scale(0.7)';
@@ -40,15 +37,14 @@
 })();
 
 
-// === STARFIELD (with touch + shooting stars) ===
+// === STARFIELD (brighter, denser, shooting stars, touch parallax) ===
 (function() {
   const canvas = document.getElementById('starfield');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
 
   let W, H, stars = [], shooters = [];
-  let mx = 0, my = 0;
-  let targetMx = 0, targetMy = 0;
+  let targetX = 0, targetY = 0, curX = 0, curY = 0;
 
   function resize() {
     W = canvas.width = window.innerWidth;
@@ -57,48 +53,46 @@
 
   function initStars() {
     stars = [];
-    const count = Math.floor((W * H) / 3500);
+    const count = Math.floor((W * H) / 2500);
     for (let i = 0; i < count; i++) {
+      const rnd = Math.random();
       stars.push({
         x: Math.random() * W,
         y: Math.random() * H,
-        r: Math.random() * 1.4 + 0.2,
-        a: Math.random() * 0.8 + 0.2,
+        r: Math.random() * 1.8 + 0.3,
+        a: Math.random() * 0.6 + 0.4,
         twinkle: Math.random() * Math.PI * 2,
-        twinkleSpeed: 0.02 + Math.random() * 0.03,
-        dx: (Math.random() - .5) * 0.12,
-        dy: (Math.random() - .5) * 0.12,
-        // Some stars get a cyan or amber tint
-        hue: Math.random() < 0.08 ? 'cyan' : Math.random() < 0.05 ? 'amber' : 'white'
+        twinkleSpeed: 0.02 + Math.random() * 0.04,
+        dx: (Math.random() - 0.5) * 0.12,
+        dy: (Math.random() - 0.5) * 0.12,
+        hue: rnd < 0.08 ? 'cyan' : rnd < 0.13 ? 'amber' : 'white'
       });
     }
   }
 
   function spawnShooter() {
     shooters.push({
-      x: Math.random() * W * 0.7,
+      x: Math.random() * W * 0.6,
       y: Math.random() * H * 0.4,
-      len: 80 + Math.random() * 120,
-      speed: 8 + Math.random() * 6,
-      angle: Math.PI / 4 + (Math.random() - 0.5) * 0.3,
+      len: 90 + Math.random() * 130,
+      speed: 9 + Math.random() * 7,
+      angle: Math.PI / 4 + (Math.random() - 0.5) * 0.4,
       life: 1,
-      decay: 0.018 + Math.random() * 0.015
+      decay: 0.016 + Math.random() * 0.014
     });
   }
-  // Spawn shooting star every 4-8 seconds
-  spawnShooter(); setInterval(spawnShooter, 2500 + Math.random() * 2500);
+
+  spawnShooter();
+  setInterval(spawnShooter, 2500 + Math.random() * 2000);
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
 
-    // Smooth mouse follow
-    mx += (targetMx - mx) * 0.06;
-    my += (targetMy - my) * 0.06;
+    curX += (targetX - curX) * 0.05;
+    curY += (targetY - curY) * 0.05;
+    const px = (curX / W - 0.5) * 28;
+    const py = (curY / H - 0.5) * 28;
 
-    const px = (mx / W - .5) * 24;
-    const py = (my / H - .5) * 24;
-
-    // Draw stars
     for (const s of stars) {
       s.x += s.dx;
       s.y += s.dy;
@@ -106,83 +100,61 @@
       if (s.x < 0) s.x = W; if (s.x > W) s.x = 0;
       if (s.y < 0) s.y = H; if (s.y > H) s.y = 0;
 
-      const twinkleA = s.a * (0.6 + 0.4 * Math.sin(s.twinkle));
-      const ox = s.x + px * s.r * 0.4;
-      const oy = s.y + py * s.r * 0.4;
+      const ta = s.a * (0.55 + 0.45 * Math.sin(s.twinkle));
+      const ox = s.x + px * s.r * 0.35;
+      const oy = s.y + py * s.r * 0.35;
 
       ctx.beginPath();
       ctx.arc(ox, oy, s.r, 0, Math.PI * 2);
 
       if (s.hue === 'cyan') {
-        ctx.fillStyle = `rgba(0,240,224,${twinkleA})`;
-        if (s.r > 1) {
-          ctx.shadowColor = 'rgba(0,240,224,0.6)';
-          ctx.shadowBlur = 4;
-        }
+        ctx.fillStyle = 'rgba(0,240,224,' + ta + ')';
+        if (s.r > 1.2) { ctx.shadowColor = 'rgba(0,240,224,0.7)'; ctx.shadowBlur = 5; }
       } else if (s.hue === 'amber') {
-        ctx.fillStyle = `rgba(240,165,0,${twinkleA})`;
-        if (s.r > 1) {
-          ctx.shadowColor = 'rgba(240,165,0,0.5)';
-          ctx.shadowBlur = 4;
-        }
+        ctx.fillStyle = 'rgba(240,165,0,' + ta + ')';
+        if (s.r > 1.2) { ctx.shadowColor = 'rgba(240,165,0,0.6)'; ctx.shadowBlur = 5; }
       } else {
-        ctx.fillStyle = `rgba(200,220,255,${twinkleA})`;
+        ctx.fillStyle = 'rgba(225,238,255,' + ta + ')';
         ctx.shadowBlur = 0;
       }
       ctx.fill();
       ctx.shadowBlur = 0;
     }
 
-    // Draw shooting stars
     for (let i = shooters.length - 1; i >= 0; i--) {
       const s = shooters[i];
       s.x += Math.cos(s.angle) * s.speed;
       s.y += Math.sin(s.angle) * s.speed;
       s.life -= s.decay;
       if (s.life <= 0) { shooters.splice(i, 1); continue; }
-
-      const grad = ctx.createLinearGradient(
+      const g = ctx.createLinearGradient(
         s.x - Math.cos(s.angle) * s.len, s.y - Math.sin(s.angle) * s.len,
         s.x, s.y
       );
-      grad.addColorStop(0, `rgba(255,255,255,0)`);
-      grad.addColorStop(1, `rgba(255,255,255,${s.life * 0.8})`);
+      g.addColorStop(0, 'rgba(255,255,255,0)');
+      g.addColorStop(1, 'rgba(255,255,255,' + (s.life * 0.9) + ')');
       ctx.beginPath();
       ctx.moveTo(s.x - Math.cos(s.angle) * s.len, s.y - Math.sin(s.angle) * s.len);
       ctx.lineTo(s.x, s.y);
-      ctx.strokeStyle = grad;
+      ctx.strokeStyle = g;
       ctx.lineWidth = 1.5 * s.life;
       ctx.stroke();
     }
 
-    // Subtle grid
     ctx.strokeStyle = 'rgba(255,255,255,0.012)';
-    ctx.lineWidth = .5;
+    ctx.lineWidth = 0.5;
     const step = 80;
-    for (let x = 0; x < W; x += step) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-    }
-    for (let y = 0; y < H; y += step) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
+    for (let x = 0; x < W; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
     requestAnimationFrame(draw);
   }
 
-  resize();
-  initStars();
-  draw();
+  resize(); initStars(); draw();
   window.addEventListener('resize', () => { resize(); initStars(); });
-
-  // Mouse support
-  document.addEventListener('mousemove', e => { targetMx = e.clientX; targetMy = e.clientY; });
-
-  // Touch support for mobile parallax
+  document.addEventListener('mousemove', e => { targetX = e.clientX; targetY = e.clientY; });
   document.addEventListener('touchmove', e => {
-    if (e.touches.length > 0) {
-      targetMx = e.touches[0].clientX;
-      targetMy = e.touches[0].clientY;
-    }
+    if (e.touches.length > 0) { targetX = e.touches[0].clientX; targetY = e.touches[0].clientY; }
   }, { passive: true });
 })();
 
@@ -211,9 +183,7 @@
   const head = document.getElementById('rbHead');
   if (!head) return;
 
-  const stage = document.getElementById('robotStage');
   const promptEl = document.getElementById('promptText');
-
   const phrases = [
     'Choose your path',
     'Photography or Tech?',
@@ -224,26 +194,20 @@
   ];
   let phraseIdx = 0;
 
-  // Cycle phrases
   setInterval(() => {
     phraseIdx = (phraseIdx + 1) % phrases.length;
     if (promptEl) promptEl.textContent = phrases[phraseIdx];
   }, 3000);
 
-  // Mouse tracking for head tilt
   document.addEventListener('mousemove', e => {
-    if (!head) return;
     const rect = head.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     const dx = (e.clientX - cx) / window.innerWidth;
     const dy = (e.clientY - cy) / window.innerHeight;
-    const rx = dy * -14;
-    const ry = dx * 18;
-    head.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+    head.style.transform = 'rotateX(' + (dy * -14) + 'deg) rotateY(' + (dx * 18) + 'deg)';
   });
 
-  // Panel hover: prompt update
   const leftPanel = document.getElementById('choiceLeft');
   const rightPanel = document.getElementById('choiceRight');
 
@@ -266,34 +230,15 @@
     });
   }
 
-  // Ambient robot particles
   const particleEl = document.getElementById('roboParticles');
   if (particleEl) {
     function spawnParticle() {
       const p = document.createElement('div');
       const size = Math.random() * 3 + 1;
-      const startX = 40 + Math.random() * 180;
-      const startY = 60 + Math.random() * 200;
-      p.style.cssText = `
-        position:absolute;
-        width:${size}px;height:${size}px;
-        border-radius:50%;
-        left:${startX}px;top:${startY}px;
-        background:rgba(0,240,224,${Math.random() * 0.4 + 0.1});
-        box-shadow:0 0 6px rgba(0,240,224,0.4);
-        pointer-events:none;
-        transition:all ${1.5 + Math.random() * 2}s ease-out;
-        opacity:0;
-      `;
+      p.style.cssText = 'position:absolute;width:' + size + 'px;height:' + size + 'px;border-radius:50%;left:' + (40 + Math.random() * 180) + 'px;top:' + (60 + Math.random() * 200) + 'px;background:rgba(0,240,224,' + (Math.random() * 0.4 + 0.1) + ');box-shadow:0 0 6px rgba(0,240,224,0.4);pointer-events:none;transition:all ' + (1.5 + Math.random() * 2) + 's ease-out;opacity:0;';
       particleEl.appendChild(p);
-      setTimeout(() => {
-        p.style.opacity = '1';
-        p.style.transform = `translateY(-${30 + Math.random() * 60}px) translateX(${(Math.random()-0.5)*40}px)`;
-      }, 10);
-      setTimeout(() => {
-        p.style.opacity = '0';
-        setTimeout(() => p.remove(), 600);
-      }, 1500 + Math.random() * 1000);
+      setTimeout(() => { p.style.opacity = '1'; p.style.transform = 'translateY(-' + (30 + Math.random() * 60) + 'px) translateX(' + ((Math.random() - 0.5) * 40) + 'px)'; }, 10);
+      setTimeout(() => { p.style.opacity = '0'; setTimeout(() => p.remove(), 600); }, 1500 + Math.random() * 1000);
     }
     setInterval(spawnParticle, 400);
   }
@@ -322,46 +267,43 @@
       requestAnimationFrame(step);
       observer.unobserve(el);
     });
-  }, { threshold: .5 });
+  }, { threshold: 0.5 });
 
   nums.forEach(n => observer.observe(n));
 })();
 
 
-// === NOTIFICATION SYSTEM (global) ===
-function showNotif(msg, type = 'success') {
+// === NOTIFICATION SYSTEM ===
+function showNotif(msg, type) {
+  type = type || 'success';
   const n = document.createElement('div');
   n.className = 'notif ' + type;
   n.textContent = msg;
   document.body.appendChild(n);
   setTimeout(() => n.classList.add('show'), 10);
-  setTimeout(() => {
-    n.classList.remove('show');
-    setTimeout(() => n.remove(), 400);
-  }, 3200);
+  setTimeout(() => { n.classList.remove('show'); setTimeout(() => n.remove(), 400); }, 3200);
 }
 window.showNotif = showNotif;
 
 
-// === FOLD CARD ACCESSIBILITY (prevent cursor:none weirdness on touch) ===
+// === TOUCH DEVICE — hide cursor elements ===
 (function() {
   if ('ontouchstart' in window) {
-    document.body.style.cursor = 'auto';
     document.querySelectorAll('.c-dot,.c-ring').forEach(el => el.style.display = 'none');
   }
 })();
 
 
 // === BOOKING PAGE — ICS CALENDAR PARSER ===
-// Reads /calendar/calendar.ics and marks booked times
+// Reads calendar/merged_busy.ics — pre-built by update_calendar.py
 async function loadICSCalendar() {
   try {
-    const res = await fetch('calendar/calendar.ics');
-    if (!res.ok) return null;
+    const res = await fetch('calendar/merged_busy.ics?v=' + Date.now());
+    if (!res.ok) return [];
     const text = await res.text();
     return parseICS(text);
   } catch (e) {
-    return null;
+    return [];
   }
 }
 
@@ -369,118 +311,45 @@ function parseICS(text) {
   const events = [];
   const unfolded = text.replace(/\r\n[ \t]/g, '').replace(/\r\n/g, '\n');
   const blocks = unfolded.split('BEGIN:VEVENT');
-  const now = new Date();
-  const horizon = new Date(); horizon.setMonth(horizon.getMonth() + 6);
 
-  blocks.slice(1).forEach(block => {
-    const dtStartMatch = block.match(/DTSTART(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
-    const dtEndMatch   = block.match(/DTEND(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
-    const rruleMatch   = block.match(/RRULE:([^\n]+)/);
-    if (!dtStartMatch) return;
-
-    const startIsUTC = dtStartMatch[2] === 'Z';
-    const endIsUTC   = dtEndMatch ? dtEndMatch[2] === 'Z' : startIsUTC;
-    const start = parseICSDate(dtStartMatch[1], startIsUTC);
-    const end   = dtEndMatch ? parseICSDate(dtEndMatch[1], endIsUTC) : null;
-    const durMs = end ? (end - start) : 3600000;
-
-    if (!rruleMatch) {
-      // Single event — only include if in future window
-      if (start >= now && start <= horizon) events.push({ start, end });
-      return;
-    }
-
-    // Expand recurring event
-    const rrule = rruleMatch[1];
-    const freqM = rrule.match(/FREQ=(\w+)/);
-    const untilM = rrule.match(/UNTIL=(\d{8})/);
-    const countM = rrule.match(/COUNT=(\d+)/);
-    const byDayM = rrule.match(/BYDAY=([^;]+)/);
-
-    if (!freqM || freqM[1] !== 'WEEKLY') {
-      if (start >= now && start <= horizon) events.push({ start, end });
-      return;
-    }
-
-    // Determine which days of week to repeat on
-    const dayMap = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
-    let targetDays = byDayM
-      ? byDayM[1].split(',').map(d => dayMap[d.trim().slice(-2)]).filter(d => d !== undefined)
-      : [start.getDay()];
-
-    const until = untilM
-      ? new Date(untilM[1].slice(0,4)+'-'+untilM[1].slice(4,6)+'-'+untilM[1].slice(6,8))
-      : horizon;
-    const maxUntil = until < horizon ? until : horizon;
-    const maxCount = countM ? parseInt(countM[1]) : 999;
-
-    let count = 0;
-    // Walk week by week from start
-    let cur = new Date(start);
-    // Go back to start of that week
-    while (cur <= maxUntil && count < maxCount) {
-      for (const day of targetDays) {
-        // Find next occurrence of this weekday from cur
-        const diff = (day - cur.getDay() + 7) % 7;
-        const occ = new Date(cur);
-        occ.setDate(occ.getDate() + diff);
-        occ.setHours(start.getHours(), start.getMinutes(), 0, 0);
-
-        if (occ < start) { continue; } // before series start
-        if (occ > maxUntil) { continue; }
-        if (count >= maxCount) { break; }
-
-        if (occ >= now) {
-          const occEnd = new Date(occ.getTime() + durMs);
-          events.push({ start: occ, end: occEnd });
-        }
-        count++;
-      }
-      cur.setDate(cur.getDate() + 7);
-    }
+  blocks.slice(1).forEach(function(block) {
+    var sm = block.match(/DTSTART(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
+    var em = block.match(/DTEND(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
+    if (!sm) return;
+    events.push({
+      start: parseICSDate(sm[1], sm[2] === 'Z'),
+      end:   em ? parseICSDate(em[1], em[2] === 'Z') : null
+    });
   });
   return events;
 }
 
 function parseICSDate(str, isUTC) {
-  const y=str.substr(0,4), mo=str.substr(4,2), d=str.substr(6,2);
-  const h=str.substr(9,2), mi=str.substr(11,2);
+  var y = +str.substr(0,4), mo = +str.substr(4,2)-1, d = +str.substr(6,2);
+  var h = +str.substr(9,2), mi = +str.substr(11,2);
   if (isUTC) {
-    const utc = new Date(Date.UTC(+y,+mo-1,+d,+h,+mi));
-    utc.setHours(utc.getHours()+2); // SAST = UTC+2
+    var utc = new Date(Date.UTC(y, mo, d, h, mi));
+    utc.setHours(utc.getHours() + 2);
     return utc;
   }
-  return new Date(+y,+mo-1,+d,+h,+mi);
+  return new Date(y, mo, d, h, mi);
 }
 
 function getBookedHoursForDate(events, dateStr) {
-  const parts = dateStr.split('-');
-  const targetY = parseInt(parts[0]);
-  const targetM = parseInt(parts[1]) - 1;
-  const targetD = parseInt(parts[2]);
-  const booked = [];
+  var parts = dateStr.split('-');
+  var tY = +parts[0], tM = +parts[1]-1, tD = +parts[2];
+  var booked = [];
 
-  events.forEach(ev => {
-    const s = ev.start;
-    const e = ev.end;
-
-    // Check if event falls on this date
-    if (s.getFullYear() !== targetY ||
-        s.getMonth()    !== targetM ||
-        s.getDate()     !== targetD) return;
-
-    // Grey out every hour the event covers
-    const startH = s.getHours();
-    const endH   = e
-      ? e.getHours() + (e.getMinutes() > 0 ? 1 : 0)
-      : startH + 1;
-
-    for (let h = startH; h < endH; h++) {
-      const slot = String(h).padStart(2,'0') + ':00';
+  events.forEach(function(ev) {
+    var s = ev.start, e = ev.end;
+    if (s.getFullYear() !== tY || s.getMonth() !== tM || s.getDate() !== tD) return;
+    var startH = s.getHours();
+    var endH = e ? e.getHours() + (e.getMinutes() > 0 ? 1 : 0) : startH + 1;
+    for (var h = startH; h < endH; h++) {
+      var slot = String(h).padStart(2,'0') + ':00';
       if (!booked.includes(slot)) booked.push(slot);
     }
   });
-
   return booked;
 }
 
