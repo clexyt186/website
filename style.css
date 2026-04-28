@@ -133,8 +133,9 @@ nav.scrolled { background: rgba(10,10,16,0.95); }
   gap: 5px;
   background: none;
   border: none;
-  cursor: none;
+  cursor: pointer;
   padding: .5rem;
+  z-index: 1001;
 }
 .burger span {
   display: block;
@@ -142,6 +143,9 @@ nav.scrolled { background: rgba(10,10,16,0.95); }
   background: var(--text);
   transition: all .3s;
 }
+.burger.active span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+.burger.active span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.burger.active span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
 .mob-nav {
   position: fixed;
@@ -1215,14 +1219,19 @@ nav.scrolled { background: rgba(10,10,16,0.95); }
   .footer-brand { grid-column: 1/-1; }
 }
 
+
 @media (max-width: 768px) {
-  /* NAV — burger on ALL pages */
+  /* === NAV + BURGER — all pages === */
   .nav-links { display: none !important; }
-  .burger { display: flex !important; cursor: pointer !important; z-index: 1001 !important; }
-  .mob-nav { display: flex !important; }
+  .burger { display: flex !important; }
+  .mob-nav {
+    transform: translateY(-110%);
+    display: flex !important;
+    flex-direction: column !important;
+  }
   .mob-nav.open { transform: translateY(0) !important; }
 
-  /* OTHER PAGES */
+  /* === OTHER PAGES === */
   .strip-inner { flex-wrap: wrap; justify-content: center; }
   .strip-text { width: 100%; text-align: center; }
   .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
@@ -1231,74 +1240,92 @@ nav.scrolled { background: rgba(10,10,16,0.95); }
   .contact-section { grid-template-columns: 1fr; }
   .expertise-grid { grid-template-columns: 1fr; }
 
-  /* INDEX HERO — robot top, panels side by side */
+  /* === INDEX HERO === */
   .hero-inner {
     flex-direction: row !important;
     flex-wrap: wrap !important;
     align-content: flex-start !important;
     justify-content: center !important;
     align-items: flex-start !important;
-    padding-top: 4.5rem !important;
-    gap: 0.4rem !important;
+    padding-top: 4.2rem !important;
+    gap: 0.25rem !important;
     min-height: 100svh !important;
     height: auto !important;
   }
+
+  /* Robot — half size, full width row */
   .robot-stage {
     order: 0 !important;
     flex: 0 0 100% !important;
     width: 100% !important;
-    height: 150px !important;
+    height: 130px !important;
     padding: 0 !important;
     display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    flex-direction: column !important;
+    margin-bottom: 0 !important;
   }
   .robot-wrap {
-    transform: scale(0.36) !important;
+    transform: scale(0.35) !important;
     transform-origin: top center !important;
   }
-  .robot-prompt { font-size: 0.42rem !important; margin-top: 0.2rem !important; }
+  .robot-prompt {
+    font-size: 0.4rem !important;
+    margin-top: 0.15rem !important;
+    padding: 0.25rem 0.6rem !important;
+  }
   .robo-particles { display: none !important; }
 
+  /* Panels — side by side, tight */
   .choice-left  { order: 1 !important; }
   .choice-right { order: 2 !important; }
   .choice-panel {
-    flex: 0 0 48% !important;
-    width: 48% !important;
+    flex: 0 0 48.5% !important;
+    width: 48.5% !important;
     min-width: 0 !important;
-    height: 155px !important;
+    height: 145px !important;
     min-height: 0 !important;
     padding: 0 !important;
+    margin-bottom: 0 !important;
   }
-  .choice-panel:hover { flex: 0 0 48% !important; }
+  .choice-panel:hover { flex: 0 0 48.5% !important; }
+
   .panel-content {
-    padding: 0.6rem 0.45rem !important;
+    padding: 0.55rem 0.4rem !important;
     align-items: center !important;
     justify-content: center !important;
     text-align: center !important;
     height: 100% !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.12rem !important;
+    gap: 0.1rem !important;
   }
-  .panel-label { font-size: 0.38rem !important; margin-bottom: 0.1rem !important; }
+  .panel-label {
+    font-size: 0.36rem !important;
+    letter-spacing: 0.05em !important;
+    margin-bottom: 0.08rem !important;
+  }
   .panel-content h2 {
-    font-size: clamp(0.5rem, 3.2vw, 0.8rem) !important;
+    font-size: clamp(0.48rem, 3vw, 0.75rem) !important;
     line-height: 1.2 !important;
     word-break: normal !important;
     hyphens: none !important;
+    white-space: normal !important;
   }
   .panel-content p { display: none !important; }
-  .panel-price-hint { font-size: 0.48rem !important; margin: 0.08rem 0 !important; }
+  .panel-price-hint { font-size: 0.44rem !important; margin: 0.06rem 0 !important; }
   .panel-cta {
-    font-size: 0.48rem !important;
-    padding: 0.22rem 0.5rem !important;
+    font-size: 0.44rem !important;
+    padding: 0.2rem 0.45rem !important;
     opacity: 1 !important;
     transform: none !important;
-    margin-top: 0.15rem !important;
+    margin-top: 0.1rem !important;
+    letter-spacing: 0.06em !important;
   }
   .choice-panel:hover .panel-cta { opacity: 1 !important; transform: none !important; }
+
+  /* Glow on tap */
   .choice-panel:active {
     box-shadow: 0 0 28px rgba(0,240,224,0.65), 0 0 56px rgba(0,240,224,0.2) !important;
     transform: scale(0.95) !important;
@@ -1307,18 +1334,19 @@ nav.scrolled { background: rgba(10,10,16,0.95); }
   .choice-right:active {
     box-shadow: 0 0 28px rgba(240,165,0,0.65), 0 0 56px rgba(240,165,0,0.2) !important;
   }
+
   .panel-fold-edge { display: none !important; }
   .scroll-hint { display: none !important; }
   .fold-line { display: none !important; }
+
+  /* Reduce space after panels before next section */
+  .hero { padding-bottom: 0 !important; }
+  .about-strip { margin-top: 0 !important; padding: 1.2rem 1rem !important; }
+  .stat-n { font-size: 1.4rem; }
+  .fold-teaser { padding: 2rem 0 !important; }
 }
 
 @media (max-width: 480px) {
-  .fold-teaser { padding: 3rem 0; }
-}
-
-/* Stats strip mobile */
-@media (max-width: 600px) {
-  .about-strip { padding: 1.5rem 1rem; }
-  .strip-inner { gap: 0.8rem; }
-  .stat-n { font-size: 1.4rem; }
+  .choice-panel { height: 135px !important; }
+  .panel-content h2 { font-size: clamp(0.44rem, 2.8vw, 0.7rem) !important; }
 }
