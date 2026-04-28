@@ -40,14 +40,15 @@
 })();
 
 
-// === STARFIELD ===
+// === STARFIELD (with touch + shooting stars) ===
 (function() {
   const canvas = document.getElementById('starfield');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
 
-  let W, H, stars = [];
+  let W, H, stars = [], shooters = [];
   let mx = 0, my = 0;
+  let targetMx = 0, targetMy = 0;
 
   function resize() {
     W = canvas.width = window.innerWidth;
@@ -56,42 +57,106 @@
 
   function initStars() {
     stars = [];
-    const count = Math.floor((W * H) / 8000);
+    const count = Math.floor((W * H) / 6000);
     for (let i = 0; i < count; i++) {
       stars.push({
         x: Math.random() * W,
         y: Math.random() * H,
-        r: Math.random() * 1.2 + 0.3,
-        a: Math.random(),
-        speed: Math.random() * 0.2 + 0.05,
-        dx: (Math.random() - .5) * 0.15,
-        dy: (Math.random() - .5) * 0.15
+        r: Math.random() * 1.4 + 0.2,
+        a: Math.random() * 0.8 + 0.2,
+        twinkle: Math.random() * Math.PI * 2,
+        twinkleSpeed: 0.02 + Math.random() * 0.03,
+        dx: (Math.random() - .5) * 0.12,
+        dy: (Math.random() - .5) * 0.12,
+        // Some stars get a cyan or amber tint
+        hue: Math.random() < 0.08 ? 'cyan' : Math.random() < 0.05 ? 'amber' : 'white'
       });
     }
   }
 
+  function spawnShooter() {
+    shooters.push({
+      x: Math.random() * W * 0.7,
+      y: Math.random() * H * 0.4,
+      len: 80 + Math.random() * 120,
+      speed: 8 + Math.random() * 6,
+      angle: Math.PI / 4 + (Math.random() - 0.5) * 0.3,
+      life: 1,
+      decay: 0.018 + Math.random() * 0.015
+    });
+  }
+  // Spawn shooting star every 4-8 seconds
+  setInterval(spawnShooter, 4000 + Math.random() * 4000);
+
   function draw() {
     ctx.clearRect(0, 0, W, H);
 
-    const px = (mx / W - .5) * 18;
-    const py = (my / H - .5) * 18;
+    // Smooth mouse follow
+    mx += (targetMx - mx) * 0.06;
+    my += (targetMy - my) * 0.06;
 
+    const px = (mx / W - .5) * 24;
+    const py = (my / H - .5) * 24;
+
+    // Draw stars
     for (const s of stars) {
       s.x += s.dx;
       s.y += s.dy;
-      if (s.x < 0) s.x = W;
-      if (s.x > W) s.x = 0;
-      if (s.y < 0) s.y = H;
-      if (s.y > H) s.y = 0;
+      s.twinkle += s.twinkleSpeed;
+      if (s.x < 0) s.x = W; if (s.x > W) s.x = 0;
+      if (s.y < 0) s.y = H; if (s.y > H) s.y = 0;
+
+      const twinkleA = s.a * (0.6 + 0.4 * Math.sin(s.twinkle));
+      const ox = s.x + px * s.r * 0.4;
+      const oy = s.y + py * s.r * 0.4;
 
       ctx.beginPath();
-      ctx.arc(s.x + px * s.r * .3, s.y + py * s.r * .3, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(200,220,255,${s.a * .7})`;
+      ctx.arc(ox, oy, s.r, 0, Math.PI * 2);
+
+      if (s.hue === 'cyan') {
+        ctx.fillStyle = `rgba(0,240,224,${twinkleA})`;
+        if (s.r > 1) {
+          ctx.shadowColor = 'rgba(0,240,224,0.6)';
+          ctx.shadowBlur = 4;
+        }
+      } else if (s.hue === 'amber') {
+        ctx.fillStyle = `rgba(240,165,0,${twinkleA})`;
+        if (s.r > 1) {
+          ctx.shadowColor = 'rgba(240,165,0,0.5)';
+          ctx.shadowBlur = 4;
+        }
+      } else {
+        ctx.fillStyle = `rgba(200,220,255,${twinkleA})`;
+        ctx.shadowBlur = 0;
+      }
       ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // Draw shooting stars
+    for (let i = shooters.length - 1; i >= 0; i--) {
+      const s = shooters[i];
+      s.x += Math.cos(s.angle) * s.speed;
+      s.y += Math.sin(s.angle) * s.speed;
+      s.life -= s.decay;
+      if (s.life <= 0) { shooters.splice(i, 1); continue; }
+
+      const grad = ctx.createLinearGradient(
+        s.x - Math.cos(s.angle) * s.len, s.y - Math.sin(s.angle) * s.len,
+        s.x, s.y
+      );
+      grad.addColorStop(0, `rgba(255,255,255,0)`);
+      grad.addColorStop(1, `rgba(255,255,255,${s.life * 0.8})`);
+      ctx.beginPath();
+      ctx.moveTo(s.x - Math.cos(s.angle) * s.len, s.y - Math.sin(s.angle) * s.len);
+      ctx.lineTo(s.x, s.y);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.5 * s.life;
+      ctx.stroke();
     }
 
     // Subtle grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.015)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.012)';
     ctx.lineWidth = .5;
     const step = 80;
     for (let x = 0; x < W; x += step) {
@@ -108,7 +173,17 @@
   initStars();
   draw();
   window.addEventListener('resize', () => { resize(); initStars(); });
-  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+  // Mouse support
+  document.addEventListener('mousemove', e => { targetMx = e.clientX; targetMy = e.clientY; });
+
+  // Touch support for mobile parallax
+  document.addEventListener('touchmove', e => {
+    if (e.touches.length > 0) {
+      targetMx = e.touches[0].clientX;
+      targetMy = e.touches[0].clientY;
+    }
+  }, { passive: true });
 })();
 
 
@@ -278,30 +353,13 @@ window.showNotif = showNotif;
 
 
 // === BOOKING PAGE — ICS CALENDAR PARSER ===
-// Reads ALL .ics files listed in calendar/manifest.json and combines events
+// Reads /calendar/calendar.ics and marks booked times
 async function loadICSCalendar() {
   try {
-    // Fetch the manifest to find all .ics files
-    const manifestRes = await fetch('calendar/manifest.json');
-    if (!manifestRes.ok) return null;
-    const files = await manifestRes.json();
-    if (!files.length) return [];
-
-    // Fetch and parse every .ics file, merge all events
-    const allEvents = [];
-    await Promise.all(files.map(async filename => {
-      try {
-        const res = await fetch('calendar/' + filename);
-        if (!res.ok) return;
-        const text = await res.text();
-        const events = parseICS(text);
-        allEvents.push(...events);
-      } catch (e) {
-        // Skip files that fail silently
-      }
-    }));
-
-    return allEvents;
+    const res = await fetch('calendar/calendar.ics');
+    if (!res.ok) return null;
+    const text = await res.text();
+    return parseICS(text);
   } catch (e) {
     return null;
   }
@@ -309,50 +367,64 @@ async function loadICSCalendar() {
 
 function parseICS(text) {
   const events = [];
-  const blocks = text.split('BEGIN:VEVENT');
+  // Unfold lines (ICS wraps long lines with CRLF + space)
+  const unfolded = text.replace(/\r\n[ \t]/g, '').replace(/\r\n/g, '\n');
+  const blocks = unfolded.split('BEGIN:VEVENT');
+
   blocks.slice(1).forEach(block => {
-    // Handle both TZID format and plain format
-    const dtStart = block.match(/DTSTART(?:[^:]*):(\d{8}T\d{6})/);
-    const dtEnd   = block.match(/DTEND(?:[^:]*):(\d{8}T\d{6})/);
-    if (dtStart) {
-      events.push({
-        start: parseICSDate(dtStart[1]),
-        end:   dtEnd ? parseICSDate(dtEnd[1]) : null
-      });
-    }
+    // Match TZID format: DTSTART;TZID=...:20260428T080000
+    // Match UTC format:  DTSTART:20260428T080000Z
+    // Match plain format:DTSTART:20260428T080000
+    const dtStartMatch = block.match(/DTSTART(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
+    const dtEndMatch   = block.match(/DTEND(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);
+    if (!dtStartMatch) return;
+
+    // Check if it has TZID (local SAST time) or Z (UTC) or plain (assume local)
+    const startIsUTC = dtStartMatch[2] === 'Z';
+    const endIsUTC   = dtEndMatch ? dtEndMatch[2] === 'Z' : startIsUTC;
+
+    const start = parseICSDate(dtStartMatch[1], startIsUTC);
+    const end   = dtEndMatch ? parseICSDate(dtEndMatch[1], endIsUTC) : null;
+
+    events.push({ start, end });
   });
   return events;
 }
 
-function parseICSDate(str) {
+function parseICSDate(str, isUTC) {
   const y  = str.substr(0,4), mo = str.substr(4,2), d  = str.substr(6,2);
   const h  = str.substr(9,2), mi = str.substr(11,2);
-  return new Date(`${y}-${mo}-${d}T${h}:${mi}:00`);
+  if (isUTC) {
+    // UTC time — convert to SAST (UTC+2) by adding 2 hours
+    const utc = new Date(Date.UTC(+y, +mo-1, +d, +h, +mi));
+    utc.setHours(utc.getHours() + 2);
+    return utc;
+  }
+  // Local SAST time — treat as-is
+  return new Date(+y, +mo-1, +d, +h, +mi);
 }
 
 function getBookedHoursForDate(events, dateStr) {
-  // Parse dateStr as local date midnight
   const parts = dateStr.split('-');
   const targetY = parseInt(parts[0]);
   const targetM = parseInt(parts[1]) - 1;
   const targetD = parseInt(parts[2]);
-
   const booked = [];
 
   events.forEach(ev => {
     const s = ev.start;
     const e = ev.end;
 
-    // Check if event overlaps this date
-    const sameDay = s.getFullYear() === targetY &&
-                    s.getMonth()    === targetM &&
-                    s.getDate()     === targetD;
+    // Check if event falls on this date
+    if (s.getFullYear() !== targetY ||
+        s.getMonth()    !== targetM ||
+        s.getDate()     !== targetD) return;
 
-    if (!sameDay) return;
-
-    // Mark every hour slot the event covers as booked
+    // Grey out every hour the event covers
     const startH = s.getHours();
-    const endH   = e ? e.getHours() + (e.getMinutes() > 0 ? 1 : 0) : startH + 1;
+    const endH   = e
+      ? e.getHours() + (e.getMinutes() > 0 ? 1 : 0)
+      : startH + 1;
 
     for (let h = startH; h < endH; h++) {
       const slot = String(h).padStart(2,'0') + ':00';

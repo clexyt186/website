@@ -29,7 +29,8 @@ def main():
     site_dir = os.path.dirname(os.path.abspath(__file__))
     try:
         subprocess.run(['git', 'add', '.'], cwd=site_dir, check=True)
-        subprocess.run(['git', 'commit', '-m', 'update calendar availability'], cwd=site_dir, check=True)
+        # Don't fail if nothing changed — just skip commit
+        result = subprocess.run(['git', 'commit', '-m', 'update calendar availability'], cwd=site_dir)
         subprocess.run(['git', 'push'], cwd=site_dir, check=True)
         print("✅ Site pushed to GitHub — Netlify will deploy shortly.")
     except subprocess.CalledProcessError as e:
