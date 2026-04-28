@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SYSTEM ARCHITECTURE — CLEVITA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230a0a0f'/><circle cx='50' cy='50' r='20' fill='none' stroke='%2300f3ff' stroke-width='4'/><circle cx='50' cy='50' r='8' fill='%2300f3ff'/></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="c-dot"></div>
+<div class="c-ring"></div>
+<canvas id="starfield"></canvas>
+
+<nav id="nav">
+  <a href="index.html" class="nav-logo">CLEXYT<span class="nav-dot"></span></a>
+  <div class="nav-links">
+    <a href="photography.html">Photography</a>
+    <a href="consulting.html" style="color:var(--text)">Consulting</a>
+    <a href="contact.html">Contact</a>
+    <a href="booking.html" class="nav-cta">Book Now</a>
+  </div>
+  <button class="burger" id="burger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mob-nav" id="mobNav">
+  <a href="index.html">Home</a>
+  <a href="photography.html">Photography</a>
+  <a href="consulting.html">Consulting</a>
+  <a href="contact.html">Contact</a>
+  <a href="booking.html">Book Now</a>
+</div>
+
+<!-- Hero -->
+<div class="page-hero">
+  <div class="mini-robot" style="margin-bottom:1.5rem">
+    <div class="mini-rb-head">
+      <div class="mini-rb-tip"></div>
+      <div style="display:flex;gap:3px"><div class="mini-rb-eye" style="background:var(--amber);box-shadow:0 0 6px var(--amber)"></div><div class="mini-rb-eye" style="background:var(--amber);box-shadow:0 0 6px var(--amber)"></div></div>
+    </div>
+    <span style="font-family:var(--font-m);font-size:.65rem;letter-spacing:.1em;color:var(--muted)">CLEXYT TECH</span>
+  </div>
+  <div class="page-tag">SYSTEM ARCHITECTURE</div>
+  <h1>Building systems<br>that outlast<br>trends.</h1>
+  <p> solutions for businesses that want to move faster. Architecture, development, AgriTech and security — all built with longevity in mind.</p>
+</div>
+
+<!-- Expertise -->
+<div class="expertise-grid">
+  <div class="expertise-card">
+    <h3>System Architecture</h3>
+    <p>Scalable, resilient enterprise systems designed for growth. From data pipelines to microservices.</p>
+    <div class="expertise-tags">
+      <span class="expertise-tag">Microservices</span>
+      <span class="expertise-tag">Cloud</span>
+      <span class="expertise-tag">APIs</span>
+      <span class="expertise-tag">Data</span>
+    </div>
+  </div>
+  <div class="expertise-card">
+    <h3>Agriculture</h3>
+    <p>Farm management systems, scheduling tools, IoT data capture and crop monitoring platforms.</p>
+    <div class="expertise-tags">
+      <span class="expertise-tag">IoT</span>
+      <span class="expertise-tag">Automation</span>
+      <span class="expertise-tag">Data Capture</span>
+    </div>
+  </div>
+  <div class="expertise-card">
+    <h3>App Development</h3>
+    <p>Mobile and web applications — from MVPs to full enterprise products. Cross-platform and performant.</p>
+    <div class="expertise-tags">
+      <span class="expertise-tag">React</span>
+      <span class="expertise-tag">Flutter</span>
+      <span class="expertise-tag">PWA</span>
+      <span class="expertise-tag">Backend</span>
+    </div>
+  </div>
+  <div class="expertise-card">
+    <h3>Security Systems</h3>
+    <p>Enterprise cybersecurity, monitoring infrastructure, access control and compliance systems.</p>
+    <div class="expertise-tags">
+      <span class="expertise-tag">Cybersecurity</span>
+      <span class="expertise-tag">Monitoring</span>
+      <span class="expertise-tag">Compliance</span>
+    </div>
+  </div>
+</div>
+
+<!-- Consultation form -->
+<section class="consult-section" style="margin-top:4rem">
+  <div class="mini-robot" style="margin-bottom:1.5rem">
+    <div class="mini-rb-head">
+      <div class="mini-rb-tip"></div>
+      <div style="display:flex;gap:3px"><div class="mini-rb-eye"></div><div class="mini-rb-eye"></div></div>
+    </div>
+    <span style="font-family:var(--font-m);font-size:.65rem;letter-spacing:.1em;color:var(--muted)">START A PROJECT</span>
+  </div>
+  <h2>Request a Consultation</h2>
+  <p>Tell me what you're building. I'll respond within 24 hours with a clear plan of action and estimated scope.</p>
+
+  <form id="consultForm" onsubmit="submitConsult(event)">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="cName" required placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="cEmail" required placeholder="email@example.com">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Phone / WhatsApp</label>
+        <input type="tel" id="cPhone" placeholder="074 000 0000">
+      </div>
+      <div class="form-group">
+        <label>Service Area</label>
+        <select id="cService" required>
+          <option value="">Select a domain</option>
+          <option value="architecture">System Architecture</option>
+          <option value="agritech">Agriculture Technology</option>
+          <option value="app">App Development</option>
+          <option value="web">Web Development</option>
+          <option value="security">Security Systems</option>
+          <option value="consulting">General Consulting</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Project Description</label>
+      <textarea id="cProject" required placeholder="Describe what you'd like built, the problem you're solving, and any relevant constraints or deadlines..."></textarea>
+    </div>
+    <button type="submit" class="form-submit">
+      Send Request
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </form>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">CLEVITA</div>
+      <p>Futuristic Media Production &amp; SYSTEM ARCHITECTURE</p>
+      <p>PRETORIA,Pretoria, South Africa</p>
+    </div>
+    <div class="footer-links">
+      <a href="photography.html">Photography</a>
+      <a href="consulting.html">Consulting</a>
+      <a href="booking.html">Book Now</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <div class="footer-contact">
+      <a href="mailto:cletusmulaudi32@gmail.com">cletusmulaudi32@gmail.com</a>
+      <a href="tel:+27742959835">074 295 9835</a>
+      <a href="https://instagram.com/clexyt14" target="_blank">@clexyt14</a>
+    </div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2025 CLEXYT Studio. All rights reserved.</span></div>
+</footer>
+
+<script src="script.js"></script>
+<script>
+function submitConsult(e) {
+  e.preventDefault();
+  const name = document.getElementById('cName').value;
+  const email = document.getElementById('cEmail').value;
+  const phone = document.getElementById('cPhone').value;
+  const service = document.getElementById('cService').value;
+  const project = document.getElementById('cProject').value;
+
+  // Build WhatsApp message as primary delivery
+  const msg = encodeURIComponent(
+    `*CLEXYT Consulting Request*\n\n` +
+    `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nService: ${service}\n\nProject:\n${project}`
+  );
+  const waUrl = `https://wa.me/27742959835?text=${msg}`;
+
+  // Also open email as fallback
+  const emailBody = encodeURIComponent(`Name: ${name}\nPhone: ${phone}\nService: ${service}\n\nProject:\n${project}`);
+  const emailUrl = `mailto:cletusmulaudi32@gmail.com?subject=Consulting Request — ${service}&body=${emailBody}`;
+
+  showNotif('Opening WhatsApp with your request...', 'success');
+  setTimeout(() => window.open(waUrl, '_blank'), 800);
+  document.getElementById('consultForm').reset();
+}
+</script>
+</body>
+</html>
