@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CLEVITA — Media & Consulting</title>
+  <title>CLEXYT — Media & Consulting</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230a0a0f'/><circle cx='50' cy='50' r='20' fill='none' stroke='%2300f3ff' stroke-width='4'/><circle cx='50' cy='50' r='8' fill='%2300f3ff'/></svg>">
   <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
 
@@ -21,10 +20,11 @@
 
 <!-- Nav -->
 <nav id="nav">
-  <a href="index.html" class="nav-logo">CLEVITA<span class="nav-dot"></span></a>
+  <a href="index.html" class="nav-logo">CLEXYT<span class="nav-dot"></span></a>
   <div class="nav-links">
     <a href="photography.html">Photography</a>
     <a href="consulting.html">Consulting</a>
+    <a href="portfolio.html">Portfolio</a>
     <a href="contact.html">Contact</a>
     <a href="booking.html" class="nav-cta">Book Now</a>
   </div>
@@ -37,6 +37,7 @@
 <div class="mob-nav" id="mobNav">
   <a href="photography.html">Photography</a>
   <a href="consulting.html">Consulting</a>
+  <a href="portfolio.html">Portfolio</a>
   <a href="contact.html">Contact</a>
   <a href="booking.html">Book Now</a>
 </div>
@@ -44,14 +45,13 @@
 <!-- HERO -->
 <main class="hero">
 
-  <!-- Fold lines decoration -->
   <div class="fold-line fold-line-1"></div>
   <div class="fold-line fold-line-2"></div>
 
   <div class="hero-inner">
 
-    <!-- Left panel: photography choice -->
-    <div class="choice-panel choice-left" id="choiceLeft" onclick="window.location.href='photography.html'">
+    <!-- Left panel: photography -->
+    <a class="choice-panel choice-left" id="choiceLeft" href="photography.html">
       <div class="panel-bg panel-bg-left"></div>
       <div class="panel-content">
         <div class="panel-label">Visual Arts</div>
@@ -61,16 +61,17 @@
         <div class="panel-cta">Enter <span class="arrow-icon">→</span></div>
       </div>
       <div class="panel-fold-edge panel-fold-edge-left"></div>
-    </div>
+    </a>
 
     <!-- Center: Robot -->
     <div class="robot-stage" id="robotStage">
 
-      <!-- Small ambient particles -->
       <div class="robo-particles" id="roboParticles"></div>
 
+      <!-- Pinch hint — mobile only, above robot, disappears after 4 s -->
+      <div class="pinch-hint" id="pinchHint">pinch to zoom</div>
+
       <div class="robot-wrap" id="robot">
-        <!-- Head -->
         <div class="rb-head" id="rbHead">
           <div class="rb-antenna"><div class="rb-antenna-tip"></div></div>
           <div class="rb-visor">
@@ -82,8 +83,6 @@
           <div class="rb-ear rb-ear-r"></div>
           <div class="rb-head-glow"></div>
         </div>
-
-        <!-- Body -->
         <div class="rb-body">
           <div class="rb-chest">
             <div class="rb-chest-light rb-chest-light-1"></div>
@@ -91,8 +90,6 @@
             <div class="rb-chest-light rb-chest-light-3"></div>
           </div>
           <div class="rb-core"></div>
-
-          <!-- Left arm: Photography -->
           <div class="rb-arm rb-arm-l" id="rbArmL">
             <div class="rb-upper-arm"></div>
             <div class="rb-elbow"></div>
@@ -103,8 +100,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Right arm: Consulting -->
           <div class="rb-arm rb-arm-r" id="rbArmR">
             <div class="rb-upper-arm"></div>
             <div class="rb-elbow"></div>
@@ -116,8 +111,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Legs -->
         <div class="rb-legs">
           <div class="rb-leg rb-leg-l">
             <div class="rb-shin"></div>
@@ -128,7 +121,6 @@
             <div class="rb-foot"></div>
           </div>
         </div>
-
         <div class="rb-glow-floor"></div>
       </div>
 
@@ -137,10 +129,16 @@
         <span id="promptText">Choose your path</span>
         <div class="prompt-cursor"></div>
       </div>
+
+      <!-- "Here for Vibes" button — PC only, below robot prompt -->
+      <a class="vibes-btn vibes-btn-pc" href="games.html">
+        <span class="vibes-dot"></span>here for vibes?
+      </a>
+
     </div>
 
-    <!-- Right panel: consulting choice -->
-    <div class="choice-panel choice-right" id="choiceRight" onclick="window.location.href='consulting.html'">
+    <!-- Right panel: consulting -->
+    <a class="choice-panel choice-right" id="choiceRight" href="consulting.html">
       <div class="panel-bg panel-bg-right"></div>
       <div class="panel-content">
         <div class="panel-label">Digital Solutions</div>
@@ -150,7 +148,7 @@
         <div class="panel-cta">Enter <span class="arrow-icon">→</span></div>
       </div>
       <div class="panel-fold-edge panel-fold-edge-right"></div>
-    </div>
+    </a>
 
   </div>
 
@@ -161,6 +159,13 @@
   </div>
 
 </main>
+
+<!-- "Here for Vibes" button — mobile only, between hero and stats -->
+<div class="vibes-mob-wrap">
+  <a class="vibes-btn vibes-btn-mob" href="games.html">
+    <span class="vibes-dot"></span>here for vibes?
+  </a>
+</div>
 
 <!-- Mini about strip -->
 <section class="about-strip">
@@ -177,9 +182,9 @@
   </div>
 </section>
 
-<!-- Services teaser — folding card style -->
+<!-- Services teaser — converted to <a> tags for transitions -->
 <section class="fold-teaser">
-  <div class="fold-card" onclick="window.location.href='photography.html'">
+  <a class="fold-card" href="photography.html">
     <div class="fold-card-inner">
       <div class="fold-card-front">
         <div class="fc-icon">
@@ -199,9 +204,9 @@
         <div class="fc-link">View All Services →</div>
       </div>
     </div>
-  </div>
+  </a>
 
-  <div class="fold-card" onclick="window.location.href='consulting.html'">
+  <a class="fold-card" href="consulting.html">
     <div class="fold-card-inner">
       <div class="fold-card-front">
         <div class="fc-icon">
@@ -221,9 +226,9 @@
         <div class="fc-link">Start a Project →</div>
       </div>
     </div>
-  </div>
+  </a>
 
-  <div class="fold-card" onclick="window.location.href='booking.html'">
+  <a class="fold-card" href="booking.html">
     <div class="fold-card-inner">
       <div class="fold-card-front">
         <div class="fc-icon">
@@ -243,7 +248,7 @@
         <div class="fc-link">Book Now →</div>
       </div>
     </div>
-  </div>
+  </a>
 </section>
 
 <!-- Footer -->
@@ -257,6 +262,7 @@
     <div class="footer-links">
       <a href="photography.html">Photography</a>
       <a href="consulting.html">Consulting</a>
+      <a href="portfolio.html">Portfolio</a>
       <a href="booking.html">Book Now</a>
       <a href="contact.html">Contact</a>
     </div>

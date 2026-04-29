@@ -36,7 +36,7 @@
   const glow = document.createElement('div');
   glow.style.cssText = 'position:fixed;width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(0,240,224,0.7);box-shadow:0 0 16px rgba(0,240,224,0.6),inset 0 0 8px rgba(0,240,224,0.15);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);opacity:0;transition:opacity 0.15s;top:0;left:0;will-change:left,top;';
   document.body.appendChild(glow);
-  let gx=0, gy=0, cgx=0, cgy=0, active=false, hideT;
+  let gx=0, gy=0, cgx=0, cgy=0, hideT;
   function tick() {
     cgx += (gx-cgx)*0.2; cgy += (gy-cgy)*0.2;
     glow.style.left = cgx+'px'; glow.style.top = cgy+'px';
@@ -54,13 +54,13 @@
   document.addEventListener('touchend', () => { hideT = setTimeout(() => glow.style.opacity='0', 300); });
 })();
 
-// === STARFIELD — reacts to cursor AND touch ===
+// === STARFIELD — reacts to cursor AND touch, visible parallax ===
 (function() {
   const canvas = document.getElementById('starfield');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   let W, H, stars=[], shooters=[];
-  // CRITICAL: start at center so parallax works from first frame
+  // CRITICAL: always start at centre — parallax works from frame 1
   let tx, ty, cx, cy;
 
   function init() {
@@ -82,7 +82,7 @@
         ts: 0.012+Math.random()*0.028,
         dx: (Math.random()-0.5)*0.09,
         dy: (Math.random()-0.5)*0.09,
-        d: Math.random()*0.85+0.15, // depth for parallax
+        d: Math.random()*0.85+0.15,
         hue: r<0.08?'c':r<0.13?'a':'w'
       });
     }
@@ -101,9 +101,9 @@
 
   function draw() {
     ctx.clearRect(0,0,W,H);
-    // Smooth lerp toward target
-    cx += (tx-cx)*0.08; cy += (ty-cy)*0.08;
-    // Offset FROM center — this is the parallax driver
+    // Smooth lerp — slightly snappier
+    cx += (tx-cx)*0.10; cy += (ty-cy)*0.10;
+    // Parallax offset from centre
     const ox = cx - W/2;
     const oy = cy - H/2;
 
@@ -112,15 +112,15 @@
       s.tw += s.ts;
       if(s.x<0)s.x=W; if(s.x>W)s.x=0;
       if(s.y<0)s.y=H; if(s.y>H)s.y=0;
-      // Gather: stars near cursor drift toward it
       const ddx=cx-s.x, ddy=cy-s.y;
       const dist=Math.sqrt(ddx*ddx+ddy*ddy);
       const gr=Math.min(W,H)*0.3;
-      const pull = dist<gr ? (1-dist/gr)*0.015 : 0;
+      // Stronger gather pull — clearly visible on mobile
+      const pull = dist<gr ? (1-dist/gr)*0.025 : 0;
       const ta = s.a*(0.5+0.5*Math.sin(s.tw));
-      // Stars with higher depth move MORE with cursor (closer feel)
-      const px = s.x + ox*s.d*0.12 + ddx*pull;
-      const py = s.y + oy*s.d*0.12 + ddy*pull;
+      // Parallax multiplier raised from 0.12 → 0.28 for clear effect
+      const px = s.x + ox*s.d*0.28 + ddx*pull;
+      const py = s.y + oy*s.d*0.28 + ddy*pull;
       ctx.beginPath();
       ctx.arc(px,py,s.r,0,Math.PI*2);
       if(s.hue==='c'){
@@ -158,29 +158,41 @@
 
   init(); makeStars(); draw();
   window.addEventListener('resize', ()=>{init();makeStars();});
-  // PC mouse
   document.addEventListener('mousemove', e=>{tx=e.clientX;ty=e.clientY;});
-  // Mobile touch
   function onTouch(e){if(e.touches.length>0){tx=e.touches[0].clientX;ty=e.touches[0].clientY;}}
   document.addEventListener('touchstart',onTouch,{passive:true});
   document.addEventListener('touchmove',onTouch,{passive:true});
 })();
 
-// === BURGER MENU — works on all pages ===
+// === BURGER MENU — works on all pages, mobile-first ===
 (function() {
   const nav = document.getElementById('nav');
   const burger = document.getElementById('burger');
   const mobNav = document.getElementById('mobNav');
   if (nav) window.addEventListener('scroll', ()=>nav.classList.toggle('scrolled',window.scrollY>50));
   if (burger && mobNav) {
-    burger.addEventListener('click', () => {
+    function doToggle(e) {
+      e.stopPropagation();
       const isOpen = mobNav.classList.toggle('open');
       burger.classList.toggle('active', isOpen);
+    }
+    burger.addEventListener('click', doToggle);
+    // Dedicated touchend to prevent ghost-click issues on iOS
+    burger.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      doToggle(e);
     });
     mobNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
       mobNav.classList.remove('open');
       burger.classList.remove('active');
     }));
+    // Close menu on tap outside
+    document.addEventListener('touchstart', function(e) {
+      if (mobNav.classList.contains('open') && !nav.contains(e.target) && !mobNav.contains(e.target)) {
+        mobNav.classList.remove('open');
+        burger.classList.remove('active');
+      }
+    }, {passive:true});
   }
 })();
 
@@ -285,3 +297,107 @@ function getBookedHoursForDate(events,dateStr){
 }
 window.loadICSCalendar=loadICSCalendar;
 window.getBookedHoursForDate=getBookedHoursForDate;
+
+// === PAGE TRANSITIONS — iris wipe from click point ===
+(function() {
+  const ov = document.createElement('div');
+  ov.id = 'ptOv';
+  ov.style.cssText = [
+    'position:fixed;inset:0;z-index:99998;will-change:clip-path;',
+    'background:radial-gradient(ellipse at 55% 40%, rgba(0,15,25,0.98) 0%, #0a0a10 55%);',
+    'pointer-events:none;'
+  ].join('');
+
+  const arriving = sessionStorage.getItem('ptDest');
+  if (arriving) {
+    sessionStorage.removeItem('ptDest');
+    ov.style.clipPath = 'circle(150% at 50% 50%)';
+    ov.style.transition = 'none';
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      ov.style.transition = 'clip-path 0.72s cubic-bezier(0.35, 0, 0.2, 1)';
+      ov.style.clipPath = 'circle(0% at 50% 50%)';
+    }));
+  } else {
+    ov.style.clipPath = 'circle(0% at 50% 50%)';
+    document.body.appendChild(ov);
+  }
+
+  document.addEventListener('click', function(e) {
+    const a = e.target.closest('a[href]');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || href.charAt(0) === '#' || a.target === '_blank') return;
+    if (/^(https?:|mailto:|tel:|javascript:)/.test(href)) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    const bx = a.getBoundingClientRect();
+    const cx = e.clientX != null ? e.clientX : bx.left + bx.width / 2;
+    const cy = e.clientY != null ? e.clientY : bx.top + bx.height / 2;
+    const ox = ((cx / window.innerWidth) * 100).toFixed(2);
+    const oy = ((cy / window.innerHeight) * 100).toFixed(2);
+
+    ov.style.transition = 'none';
+    ov.style.clipPath = 'circle(0% at ' + ox + '% ' + oy + '%)';
+    ov.style.pointerEvents = 'all';
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      ov.style.transition = 'clip-path 0.50s cubic-bezier(0.76, 0, 0.97, 0.94)';
+      ov.style.clipPath = 'circle(150% at ' + ox + '% ' + oy + '%)';
+      sessionStorage.setItem('ptDest', '1');
+      setTimeout(() => { window.location.href = href; }, 470);
+    }));
+  }, false);
+})();
+
+// === SERVICE WORKER — enables offline page caching ===
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+// === OFFLINE DETECTION — shows banner with games link ===
+(function() {
+  let banner = null;
+
+  function buildBanner() {
+    const b = document.createElement('div');
+    b.style.cssText = [
+      'position:fixed;bottom:1.2rem;left:1.2rem;z-index:9990;max-width:290px;',
+      'background:rgba(10,10,16,0.97);border:1px solid rgba(0,240,224,0.2);border-radius:4px;',
+      'padding:.7rem 1rem;display:flex;align-items:center;gap:.65rem;',
+      'font-family:"Space Mono",monospace;font-size:.68rem;letter-spacing:.05em;color:rgba(255,255,255,.4);',
+      'box-shadow:0 4px 28px rgba(0,0,0,.55),0 0 18px rgba(0,240,224,.05);',
+      'transform:translateY(140%);transition:transform .4s cubic-bezier(.4,0,.2,1);'
+    ].join('');
+    b.innerHTML = '<span style="color:rgba(240,165,0,.8);font-size:.95rem;flex-shrink:0">◎</span>'
+      + '<span>No signal. <a href="games.html" style="color:rgba(0,240,224,.75);text-decoration:none">Play a game?</a></span>'
+      + '<button style="background:none;border:none;color:rgba(255,255,255,.2);cursor:pointer;font-size:.85rem;padding:0;margin-left:auto;flex-shrink:0" aria-label="close">✕</button>';
+    b.querySelector('button').addEventListener('click', () => { b.style.transform = 'translateY(140%)'; });
+    document.body.appendChild(b);
+    return b;
+  }
+
+  function show() {
+    if (!banner) banner = buildBanner();
+    requestAnimationFrame(() => requestAnimationFrame(() => { banner.style.transform = 'translateY(0)'; }));
+  }
+  function hide() { if (banner) banner.style.transform = 'translateY(140%)'; }
+
+  window.addEventListener('offline', show);
+  window.addEventListener('online', hide);
+  if (!navigator.onLine) window.addEventListener('load', () => setTimeout(show, 1000));
+})();
+
+// === PINCH HINT auto-dismiss after 4 s ===
+(function() {
+  const hint = document.getElementById('pinchHint');
+  if (!hint) return;
+  setTimeout(() => {
+    hint.style.opacity = '0';
+    setTimeout(() => { hint.style.display = 'none'; }, 500);
+  }, 4000);
+})();
