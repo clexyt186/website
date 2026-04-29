@@ -202,10 +202,14 @@
   cursor: none;
   background: var(--card);
   opacity: 0;
-  transform: translateY(20px);
-  transition: opacity .5s ease, transform .5s ease;
 }
-.masonry-item.visible { opacity:1; transform:none; }
+@keyframes masonryIn {
+  from { opacity:0; transform:translateY(28px) scale(0.97); }
+  to   { opacity:1; transform:none; }
+}
+.masonry-item.visible {
+  animation: masonryIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 .masonry-item img, .masonry-item video {
   width: 100%;
   display: block;
@@ -443,13 +447,21 @@ function renderGrid(items) {
     div.addEventListener('click', () => openLightbox(allItems.indexOf(item)));
     grid.appendChild(div);
 
-    // Staggered reveal
-    setTimeout(() => {
+    // Staggered animation — delay increases per item, capped at 900ms
+    const delay = Math.min(i * 65, 900);
+    div.style.animationDelay = delay + 'ms';
+    // IntersectionObserver triggers animation class (animation-delay handles stagger)
+    (function(el) {
       const obs = new IntersectionObserver(entries => {
-        entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
-      }, { threshold: .08 });
-      obs.observe(div);
-    }, i * 40);
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            obs.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.04, rootMargin: '0px 0px -10px 0px' });
+      obs.observe(el);
+    })(div);
   });
 }
 
