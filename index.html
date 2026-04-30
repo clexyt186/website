@@ -81,17 +81,22 @@
     @keyframes phPulse { 0%,100%{box-shadow:0 0 4px rgba(0,240,224,.2);} 50%{box-shadow:0 0 14px rgba(0,240,224,.55);} }
     @media (max-width:768px) { .pinch-hint { display: block; } }
 
-    /* ── MOBILE HOME LAYOUT ── */
+    /* ── MOBILE HOME LAYOUT — no conflicts with style.css ── */
     @media (max-width: 768px) {
-      .hero-inner { flex-direction: column !important; align-items: stretch !important; min-height: 100svh; padding-top: var(--nav-h, 64px); }
-      .robot-stage { order:1; width:100%!important; display:flex; flex-direction:column; align-items:center; padding:1rem 1rem 0; }
+      /* Robot — scale down, sit above panels */
+      .robot-stage { order:0 !important; }
       .robot-wrap  { transform:scale(0.58)!important; transform-origin:center top!important; margin-top:-1rem!important; margin-bottom:-3rem!important; }
-      .choice-panel { order:2; position:static!important; width:100%!important; min-height:0!important; flex:none!important; display:flex!important; flex-direction:row!important; align-items:center; gap:1rem; padding:.85rem 1.2rem!important; border-top:1px solid var(--border); }
-      .choice-left  { order:2; }
-      .choice-right { order:3; }
-      .panel-content h2 { font-size:.95rem!important; line-height:1.2!important; }
-      .panel-content p  { font-size:.68rem!important; }
-      .panel-price-hint, .panel-cta, .panel-label { font-size:.65rem!important; }
+      /* Panels — let style.css 49% side-by-side layout handle it */
+      .choice-left  { order:1 !important; }
+      .choice-right { order:2 !important; }
+      /* Touch feedback on iOS — explicit tap highlight */
+      .choice-panel {
+        -webkit-tap-highlight-color: rgba(0,240,224,0.18) !important;
+        cursor: pointer !important;
+      }
+      .choice-right { -webkit-tap-highlight-color: rgba(240,165,0,0.18) !important; }
+      /* Text sizing */
+      .panel-content h2 { font-size:clamp(.46rem,2.8vw,.72rem)!important; line-height:1.18!important; }
       .panel-bg     { opacity:.3!important; }
       .panel-fold-edge { display:none!important; }
       .vibes-btn-pc { display:none!important; }
@@ -181,9 +186,9 @@
   <div class="hero-inner">
 
     <!-- LEFT: Photography -->
-    <a class="choice-panel choice-left" id="choiceLeft" href="photography.html" style="cursor:pointer;touch-action:manipulation;" ontouchend="this._touched=true;if(typeof window.__clxWarp==='function'){try{sessionStorage.setItem('clxArriving','1');}catch(e){}window.__clxWarp(1500,function(){window.location.href='photography.html';})}else{window.location.href='photography.html';}">
+    <a class="choice-panel choice-left" id="choiceLeft" href="photography.html" style="cursor:pointer;touch-action:manipulation;pointer-events:all;-webkit-tap-highlight-color:rgba(0,240,224,0.2);display:block;" ontouchend="this._touched=true;if(typeof window.__clxWarp==='function'){try{sessionStorage.setItem('clxArriving','1');}catch(e){}window.__clxWarp(1500,function(){window.location.href='photography.html';})}else{window.location.href='photography.html';}">
       <div class="panel-bg panel-bg-left"></div>
-      <div class="panel-content" style="background:rgba(6,6,9,0.52);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:6px;padding:1.2rem 1.4rem;">
+      <div class="panel-content" style="background:rgba(6,6,9,0.52);border-radius:6px;padding:1.2rem 1.4rem;pointer-events:none;">
         <div class="panel-label">Visual Arts</div>
         <h2>Photography<br>&amp; Video</h2>
         <p>Portraits · Events · Commercial · Studio</p>
@@ -240,9 +245,9 @@
     </div>
 
     <!-- RIGHT: Consulting -->
-    <a class="choice-panel choice-right" id="choiceRight" href="consulting.html" style="cursor:pointer;touch-action:manipulation;" ontouchend="this._touched=true;if(typeof window.__clxWarp==='function'){try{sessionStorage.setItem('clxArriving','1');}catch(e){}window.__clxWarp(1500,function(){window.location.href='consulting.html';})}else{window.location.href='consulting.html';}">
+    <a class="choice-panel choice-right" id="choiceRight" href="consulting.html" style="cursor:pointer;touch-action:manipulation;pointer-events:all;-webkit-tap-highlight-color:rgba(0,240,224,0.2);display:block;" ontouchend="this._touched=true;if(typeof window.__clxWarp==='function'){try{sessionStorage.setItem('clxArriving','1');}catch(e){}window.__clxWarp(1500,function(){window.location.href='consulting.html';})}else{window.location.href='consulting.html';}">
       <div class="panel-bg panel-bg-right"></div>
-      <div class="panel-content" style="background:rgba(6,6,9,0.52);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:6px;padding:1.2rem 1.4rem;">
+      <div class="panel-content" style="background:rgba(6,6,9,0.52);border-radius:6px;padding:1.2rem 1.4rem;pointer-events:none;">
         <div class="panel-label">Digital Solutions</div>
         <h2>SYSTEM<br>ARCHITECTURE</h2>
         <p>Architecture · Apps · AgriTech · Security</p>
