@@ -1730,3 +1730,25 @@ nav.scrolled { background: rgba(10,10,16,0.95); }
   color: var(--muted);
   letter-spacing: .1em;
 }
+
+/* ── OPACITY FIX — all info boxes must be fully opaque ── */
+.svc-card, .expertise-card, .contact-card,
+.fold-card-front, .fold-card-back,
+.game-canvas-wrap, .game-hud, .game-over-overlay,
+.consult-section, .strip-inner, .about-strip,
+.site-footer, .footer-inner,
+.form-group input, .form-group select, .form-group textarea {
+  position: relative;
+  z-index: 2;
+}
+.svc-card           { background: var(--card)    !important; }
+.expertise-card     { background: var(--card)    !important; }
+.contact-card       { background: var(--surface) !important; }
+.fold-card-front,
+.fold-card-back     { background: var(--card)    !important; }
+.game-canvas-wrap   { background: var(--surface) !important; }
+.game-hud           { background: var(--surface) !important; }
+.about-strip        { background: var(--surface) !important; }
+.site-footer        { background: var(--ink)     !important; }
+.page-hero          { position: relative; z-index: 2; }
+.consult-section    { position: relative; z-index: 2; background: transparent; }
