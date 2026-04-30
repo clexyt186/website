@@ -11,8 +11,13 @@
   <link rel="stylesheet" href="style.css">
   <style>
 /* ── NO WHITE FLASH ── */
-html,body{background:#0a0a10;margin:0;padding:0;}
+html,body{background:#060609;margin:0;padding:0;}
 body{overflow:hidden;}
+/* Subtle dark vignette so text is always readable */
+#siteScroll::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(4,4,8,0.55) 100%);
+}
 /* Content hidden until warp finishes on incoming pages */
 body.warp-arriving .panel,.warp-arriving #nav{opacity:0;transition:opacity .3s;}
 body.warp-done .panel,.warp-done #nav{opacity:1;}
@@ -145,9 +150,23 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
 .port-masonry{columns:3;column-gap:4px;}
 @media(max-width:900px){.port-masonry{columns:2;}}
 @media(max-width:480px){.port-masonry{columns:1;}}
-.port-item{break-inside:avoid;margin-bottom:4px;position:relative;overflow:hidden;background:var(--card);opacity:0;transform:translateY(32px) scale(.97);cursor:pointer;}
-@keyframes portIn{to{opacity:1;transform:translateY(0) scale(1);}}
-.port-item.visible{animation:portIn .65s cubic-bezier(0.22,1,0.36,1) both;}
+.port-item{
+  break-inside:avoid;margin-bottom:4px;position:relative;overflow:hidden;
+  background:var(--card);cursor:pointer;opacity:0;
+  transition:box-shadow .3s,outline .3s;
+}
+.port-item:hover{
+  outline:1.5px solid rgba(0,240,224,0.45);
+  box-shadow:0 0 28px rgba(0,240,224,0.18);
+  z-index:2;
+}
+@keyframes portFlyIn{
+  0%  {opacity:0;transform:var(--fly-start,translateY(40px)) scale(0.88);filter:brightness(0.5) blur(3px);}
+  55% {opacity:1;filter:brightness(1.12) blur(0);}
+  75% {transform:translateX(0) translateY(0) scale(1.04);}
+  100%{opacity:1;transform:translateX(0) translateY(0) scale(1);filter:brightness(1);}
+}
+.port-item.visible{animation:portFlyIn 0.75s cubic-bezier(0.22,1,0.36,1) both;}
 .port-item img,.port-item video{width:100%;display:block;transition:transform .6s,filter .4s;filter:brightness(.88) saturate(.95);}
 .port-item:hover img,.port-item:hover video{transform:scale(1.06);filter:brightness(1.05) saturate(1.15);}
 .port-item-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(8,8,14,.9) 0%,transparent 55%);opacity:0;transition:opacity .3s;display:flex;align-items:flex-end;padding:.7rem;}
@@ -737,6 +756,18 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
     renderGrid(allItems);
   }
 
+  // Fly-in origins — items fly from different screen edges
+  const flyOrigins = [
+    'translateX(-120px) translateY(-60px)',
+    'translateX(120px) translateY(-60px)',
+    'translateX(-100px) translateY(80px)',
+    'translateX(100px) translateY(80px)',
+    'translateX(0) translateY(-140px)',
+    'translateX(0) translateY(140px)',
+    'translateX(-160px) translateY(0)',
+    'translateX(160px) translateY(0)',
+  ];
+
   function renderGrid(items){
     const grid=document.getElementById('portGrid');
     if(!grid)return;
@@ -744,17 +775,30 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
     items.forEach((item,i)=>{
       const div=document.createElement('div');
       div.className='port-item';
+      // Assign a random fly-in origin so each item comes from a different direction
+      const origin = flyOrigins[i % flyOrigins.length];
+      div.style.setProperty('--fly-start', origin);
+
       if(item.type==='image'){
-        div.innerHTML=`<img src="${item.src}" alt="Portfolio ${i+1}" loading="lazy"><div class="port-item-overlay"><span class="port-item-label">View</span></div>`;
+        div.innerHTML=`<img src="${item.src}" alt="Portfolio ${i+1}" loading="lazy"><div class="port-item-overlay"><span class="port-item-label">View full size</span></div>`;
       }else{
         div.innerHTML=`<video src="${item.src}" muted loop autoplay playsinline preload="metadata"></video><div class="port-vid-badge">▶ VIDEO</div><div class="port-item-overlay"><span class="port-item-label">Play</span></div>`;
       }
       div.addEventListener('click',()=>openLB(allItems.indexOf(item)));
       grid.appendChild(div);
-      div.style.animationDelay=Math.min(i*55,800)+'ms';
+
+      // Staggered delay — items arrive one by one
+      const delay = Math.min(i * 80, 1200);
+      div.style.animationDelay = delay + 'ms';
+
       const obs=new IntersectionObserver(entries=>{
-        entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});
-      },{threshold:0,rootMargin:'40px'});
+        entries.forEach(e=>{
+          if(e.isIntersecting){
+            e.target.classList.add('visible');
+            obs.unobserve(e.target);
+          }
+        });
+      },{threshold:0, rootMargin:'60px'});
       obs.observe(div);
     });
   }
@@ -789,6 +833,15 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
   },{passive:true});
 
   load();
+
+  // If URL has #portfolio hash (e.g. from portfolio.html redirect), scroll there
+  if(window.location.hash === '#portfolio'){
+    const pf = document.getElementById('portfolio');
+    if(pf){
+      // Small delay so scroll-snap container is ready
+      setTimeout(()=>pf.scrollIntoView({behavior:'smooth',block:'start'}), 300);
+    }
+  }
 })();
 </script>
 </body>

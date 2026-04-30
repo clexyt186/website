@@ -145,6 +145,33 @@ try {
   };
 
   wInit();
+
+  // ── ARRIVAL COVER — runs on every page load ──
+  // If we arrived via warp, the screen is already dark on the old page.
+  // We need to keep it dark on the new page until it's ready, then reveal.
+  (function(){
+    let arriving = false;
+    try{ arriving = sessionStorage.getItem('clxArriving') === '1'; }catch(e){}
+    if(!arriving) return;
+    try{ sessionStorage.removeItem('clxArriving'); }catch(e){}
+
+    // Cover immediately with same dark colour — no flash
+    const cover = document.createElement('div');
+    cover.style.cssText = [
+      'position:fixed;inset:0;z-index:99998;',
+      'background:#0a0a10;',
+      'pointer-events:none;',
+      'opacity:1;',
+      'transition:opacity 0.55s cubic-bezier(0.4,0,0.2,1);',
+    ].join('');
+    document.body.appendChild(cover);
+
+    // Reveal once page is painted
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      cover.style.opacity = '0';
+      setTimeout(()=>cover.remove(), 620);
+    }));
+  })();
 })();
 
 
@@ -168,8 +195,12 @@ try {
 
     // Warp fires, THEN navigate. Page never seen before warp.
     if(typeof window.__clxWarp==='function'){
-      window.__clxWarp(850, ()=>{ window.location.href=href; });
+      window.__clxWarp(850, ()=>{
+        try{ sessionStorage.setItem('clxArriving','1'); }catch(e){}
+        window.location.href=href;
+      });
     } else {
+      try{ sessionStorage.setItem('clxArriving','1'); }catch(e){}
       window.location.href=href;
     }
   }, true);
