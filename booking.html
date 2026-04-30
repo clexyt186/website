@@ -33,8 +33,8 @@
       cursor:none; transition:background .3s;
       border:2px solid transparent; position:relative;
     }
-    .pkg-card:hover { background:var(--card); }
-    .pkg-card.selected { background:var(--card); border-color:rgba(0,240,224,0.35); }
+    .pkg-card:hover { background:rgba(20,20,28,0.55); }
+    .pkg-card.selected { background:rgba(20,20,28,0.55); border-color:rgba(0,240,224,0.35); }
     .pkg-card.selected::after {
       content:'✓ Selected'; position:absolute; top:1rem; right:1rem;
       font-family:var(--font-m); font-size:.62rem; letter-spacing:.1em;
@@ -61,13 +61,14 @@
     .cal-section { position:relative; z-index:2; background:rgba(13,13,20,0.35); border:1px solid var(--border); border-radius:2px; padding:2rem; margin-bottom:2rem; }
     .cal-section h2 { font-size:1.1rem; margin-bottom:.4rem; }
     .cal-section p { font-size:.8rem; color:var(--muted); margin-bottom:1.5rem; }
-    .date-input { width:260px; padding:.75rem 1rem; background:var(--card); border:1px solid var(--border); border-radius:2px; color:var(--text); font-family:var(--font-m); font-size:.8rem; outline:none; }
+    .date-input { width:260px; padding:.75rem 1rem; background:rgba(13,13,20,0.35); border:1px solid var(--border); border-radius:2px; color:var(--text); font-family:var(--font-m); font-size:.8rem; outline:none; }
     .slots-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:6px; margin-top:1.5rem; }
     .time-slot {
       padding:.6rem .4rem; text-align:center;
       font-family:var(--font-m); font-size:.7rem; letter-spacing:.04em;
       border:1px solid var(--border); border-radius:2px;
       cursor:none; transition:all .2s; color:var(--muted);
+      background:rgba(13,13,20,0.35);
     }
     .time-slot.avail:hover { border-color:rgba(0,240,224,0.4); color:var(--cyan); background:rgba(0,240,224,0.04); }
     .time-slot.selected { border-color:var(--cyan); color:var(--cyan); background:rgba(0,240,224,0.08); }
@@ -304,10 +305,10 @@
     <div class="bank-box">
       <h4>PAYMENT DETAILS — EFT / BANK TRANSFER</h4>
       <div class="bank-grid">
-        <div class="bank-item"><div class="bank-label">BANK</div><div class="bank-val">YOUR BANK</div></div>
-        <div class="bank-item"><div class="bank-label">ACCOUNT HOLDER</div><div class="bank-val">CLEXYT STUDIO</div></div>
-        <div class="bank-item"><div class="bank-label">ACCOUNT NUMBER</div><div class="bank-val">0000 000 000</div></div>
-        <div class="bank-item"><div class="bank-label">BRANCH CODE</div><div class="bank-val">000000</div></div>
+        <div class="bank-item"><div class="bank-label">BANK</div><div class="bank-val">STANDARD BANK</div></div>
+        <div class="bank-item"><div class="bank-label">ACCOUNT HOLDER</div><div class="bank-val">CLEVITA</div></div>
+        <div class="bank-item"><div class="bank-label">ACCOUNT NUMBER</div><div class="bank-val">10256947684</div></div>
+        <div class="bank-item"><div class="bank-label">BRANCH CODE</div><div class="bank-val">001545</div></div>
         <div class="bank-item"><div class="bank-label">REFERENCE</div><div class="bank-val" id="bankRef">CLEV-XXXXXX</div></div>
       </div>
     </div>
