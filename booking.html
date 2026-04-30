@@ -1,353 +1,409 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- ARRIVAL COVER — runs before any paint, prevents flash -->
+  <script>
+  (function(){
+    try {
+      if (sessionStorage.getItem('clxArriving') !== '1') return;
+      sessionStorage.removeItem('clxArriving');
+      document.documentElement.style.background = '#060609';
+      var s = document.createElement('style');
+      s.id = 'clxCover';
+      s.textContent = 'body{opacity:0!important;transition:none!important}';
+      document.head.appendChild(s);
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var el = document.getElementById('clxCover');
+          if (el) el.textContent = 'body{opacity:1;transition:opacity .55s ease}';
+        }, 80);
+      });
+    } catch(e){}
+  })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Book a Session — CLEXYT</title>
+  <title>Photography & Video — CLEXYT</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230a0a0f'/><circle cx='50' cy='50' r='20' fill='none' stroke='%2300f3ff' stroke-width='4'/><circle cx='50' cy='50' r='8' fill='%2300f3ff'/></svg>">
   <link rel="stylesheet" href="style.css">
-  <style>
-    .step-bar { display:flex; gap:0; margin-bottom:3rem; }
-    .step-item {
-      flex:1; padding:.7rem 1rem; text-align:center;
-      font-family:var(--font-m); font-size:.65rem; letter-spacing:.1em;
-      color:var(--muted); background:rgba(10,10,18,0.82);
-      border:1px solid var(--border); border-right:none;
-      transition:background .3s, color .3s;
-      position:relative;
-    }
-    .step-item:last-child { border-right:1px solid var(--border); }
-    .step-item.active { background:rgba(0,240,224,0.06); color:var(--cyan); border-color:rgba(0,240,224,0.2); }
-    .step-item.done { color:rgba(0,240,224,0.5); }
 
-    .bk-step { display:none; }
-    .bk-step.active { display:block; animation:stepIn .4s ease; }
-    @keyframes stepIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
-
-    .pkg-grid { position:relative; z-index:2; display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:1.5px; background:var(--border); margin-bottom:2rem; }
-    .pkg-card {
-      background:rgba(10,10,18,0.82); padding:2rem;
-      cursor:none; transition:background .3s;
-      border:2px solid transparent; position:relative;
-    }
-    .pkg-card:hover { background:rgba(16,16,24,0.88); }
-    .pkg-card.selected { background:rgba(16,16,24,0.88); border-color:rgba(0,240,224,0.35); }
-    .pkg-card.selected::after {
-      content:'✓ Selected'; position:absolute; top:1rem; right:1rem;
-      font-family:var(--font-m); font-size:.62rem; letter-spacing:.1em;
-      color:var(--cyan); padding:.2rem .6rem;
-      border:1px solid rgba(0,240,224,0.3); border-radius:2px;
-    }
-    .pkg-tag { font-family:var(--font-m); font-size:.62rem; letter-spacing:.14em; color:var(--muted); margin-bottom:.7rem; }
-    .pkg-tag.popular { color:var(--cyan); }
-    .pkg-card h3 { font-size:1rem; font-weight:700; margin-bottom:.5rem; }
-    .pkg-desc { font-size:.8rem; color:var(--muted); margin-bottom:1rem; line-height:1.5; }
-    .pkg-price { font-family:var(--font-m); font-size:1.5rem; font-weight:700; color:var(--cyan); margin-bottom:.3rem; }
-    .pkg-deposit { font-family:var(--font-m); font-size:.65rem; color:var(--muted); margin-bottom:1rem; }
-    .pkg-features { list-style:none; font-size:.78rem; color:var(--muted); margin-bottom:1.5rem; display:flex; flex-direction:column; gap:.3rem; }
-    .pkg-features li::before { content:'— '; color:rgba(0,240,224,0.35); }
-    .pkg-select {
-      width:100%; padding:.65rem; background:none;
-      border:1px solid rgba(0,240,224,0.2); border-radius:2px;
-      color:var(--cyan); font-family:var(--font-m); font-size:.72rem;
-      letter-spacing:.1em; cursor:none; transition:background .2s, border-color .2s;
-    }
-    .pkg-select:hover { background:rgba(0,240,224,0.05); border-color:rgba(0,240,224,0.4); }
-    .pkg-card.selected .pkg-select { border-color:rgba(0,240,224,0.5); }
-
-    .cal-section { position:relative; z-index:2; background:rgba(10,10,18,0.82); border:1px solid var(--border); border-radius:2px; padding:2rem; margin-bottom:2rem; }
-    .cal-section h2 { font-size:1.1rem; margin-bottom:.4rem; }
-    .cal-section p { font-size:.8rem; color:var(--muted); margin-bottom:1.5rem; }
-    .date-input { width:260px; padding:.75rem 1rem; background:rgba(10,10,18,0.82); border:1px solid var(--border); border-radius:2px; color:var(--text); font-family:var(--font-m); font-size:.8rem; outline:none; }
-    .slots-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:6px; margin-top:1.5rem; }
-    .time-slot {
-      padding:.6rem .4rem; text-align:center;
-      font-family:var(--font-m); font-size:.7rem; letter-spacing:.04em;
-      border:1px solid var(--border); border-radius:2px;
-      cursor:none; transition:all .2s; color:var(--muted);
-      background:rgba(10,10,18,0.82);
-    }
-    .time-slot.avail:hover { border-color:rgba(0,240,224,0.4); color:var(--cyan); background:rgba(0,240,224,0.04); }
-    .time-slot.selected { border-color:var(--cyan); color:var(--cyan); background:rgba(0,240,224,0.08); }
-    .time-slot.booked { opacity:.4; cursor:not-allowed; color:#ff5050; border-color:rgba(255,80,80,0.2); }
-    .time-slot.booked-ics { opacity:.4; cursor:not-allowed; color:#f0a500; border-color:rgba(240,165,0,0.25); }
-    .slot-legend { display:flex; gap:1.5rem; margin-top:1rem; flex-wrap:wrap; }
-    .legend-item { display:flex; align-items:center; gap:.4rem; font-family:var(--font-m); font-size:.65rem; color:var(--muted); }
-    .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-
-    .form-section { position:relative; z-index:2; background:rgba(10,10,18,0.82); border:1px solid var(--border); border-radius:2px; padding:2rem; margin-bottom:2rem; }
-    .form-section h2 { font-size:1.1rem; margin-bottom:1.5rem; }
-
-    .summary-section { position:relative; z-index:2; background:rgba(10,10,18,0.82); border:1px solid var(--border); border-radius:2px; padding:2rem; margin-bottom:2rem; }
-    .summary-row { display:flex; justify-content:space-between; padding:.8rem 0; border-bottom:1px solid var(--border); font-size:.85rem; }
-    .summary-row:last-child { border-bottom:none; }
-    .summary-label { color:var(--muted); font-family:var(--font-m); font-size:.72rem; letter-spacing:.06em; }
-    .summary-val { font-weight:600; }
-    .summary-total { font-family:var(--font-m); font-size:1.1rem; color:var(--cyan); }
-
-    .bank-box { background:rgba(16,16,26,0.88); border:1px solid rgba(0,240,224,0.15); border-radius:2px; padding:1.5rem; margin:1.5rem 0; }
-    .bank-box h4 { font-family:var(--font-m); font-size:.7rem; letter-spacing:.14em; color:var(--muted); margin-bottom:1rem; }
-    .bank-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:.8rem; }
-    .bank-item { }
-    .bank-label { font-family:var(--font-m); font-size:.62rem; color:var(--muted); margin-bottom:.2rem; letter-spacing:.08em; }
-    .bank-val { font-family:var(--font-m); font-size:.85rem; color:var(--cyan); }
-
-    .warn-box { display:flex; gap:1rem; background:rgba(240,165,0,0.12); border:1px solid rgba(240,165,0,0.2); border-radius:2px; padding:1.2rem; margin:1.5rem 0; font-size:.82rem; color:rgba(240,165,0,0.9); line-height:1.6; }
-
-    .nav-btns { display:flex; justify-content:space-between; margin-top:2rem; gap:1rem; }
-    .btn-back, .btn-next, .btn-confirm {
-      padding:.75rem 1.6rem; border-radius:2px;
-      font-family:var(--font-m); font-size:.75rem; letter-spacing:.1em;
-      cursor:none; transition:all .2s; border:1px solid;
-      display:inline-flex; align-items:center; gap:.6rem;
-    }
-    .btn-back { background:none; border-color:var(--border); color:var(--muted); }
-    .btn-back:hover { border-color:rgba(255,255,255,0.15); color:var(--text); }
-    .btn-next, .btn-confirm { background:rgba(0,240,224,0.07); border-color:rgba(0,240,224,0.3); color:var(--cyan); }
-    .btn-next:hover, .btn-confirm:hover { background:rgba(0,240,224,0.12); border-color:var(--cyan); }
-
-    .success-wrap { text-align:center; padding:4rem 2rem; display:none; }
-    .success-wrap.show { display:block; animation:stepIn .5s ease; }
-    .success-icon { font-size:3.5rem; color:var(--cyan); margin-bottom:1.5rem; }
-    .ref-code { font-family:var(--font-m); font-size:1rem; color:var(--cyan); background:rgba(0,240,224,0.05); border:1px solid rgba(0,240,224,0.2); padding:.6rem 1.2rem; border-radius:2px; display:inline-block; margin:1rem 0; letter-spacing:.1em; }
-
-    @media(max-width:600px) {
-      .step-bar { flex-direction:column; }
-      .step-item { border-right:1px solid var(--border); border-bottom:none; }
-      .step-item:last-child { border-bottom:1px solid var(--border); }
-      .nav-btns { flex-direction:column; }
-    }
-  </style>
+<style>
+.nav-pinch-hint {
+  display: none;
+}
+@media (max-width: 768px) {
+  .nav-pinch-hint {
+    display: inline-flex;
+    align-items: center;
+    font-family: "Space Mono", monospace;
+    font-size: .45rem;
+    letter-spacing: .12em;
+    color: rgba(0,240,224,.62);
+    background: rgba(0,240,224,.055);
+    border: 1px solid rgba(0,240,224,.22);
+    border-radius: 20px;
+    padding: .18rem .55rem;
+    white-space: nowrap;
+    margin: 0 auto;
+    animation: navPinchGlow 2.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes navPinchGlow {
+    0%,100% { box-shadow: 0 0 4px rgba(0,240,224,.15); }
+    50%      { box-shadow: 0 0 10px rgba(0,240,224,.45), 0 0 20px rgba(0,240,224,.12); }
+  }
+}
+</style>
 </head>
 <body>
 
 <div class="c-dot"></div>
 <div class="c-ring"></div>
-<canvas id="starfield"></canvas>
+<canvas id="starfield" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;"></canvas>
 
-<nav id="nav" style="display:flex">
+<nav id="nav">
   <a href="index.html" class="nav-logo">CLEXYT<span class="nav-dot"></span></a>
+  <span class="nav-pinch-hint">pinch to zoom</span>
   <div class="nav-links">
-    <a href="photography.html">Photography</a>
+    <a href="photography.html" style="color:var(--text)">Photography</a>
     <a href="consulting.html">Consulting</a>
     <a href="contact.html">Contact</a>
-    <a href="portfolio.html">Portfolio</a>
-    <a href="booking.html" class="nav-cta" style="color:var(--cyan)">Book Now</a>
+    <a href="photography.html">Portfolio</a>
+    <a href="booking.html" class="nav-cta">Book Now</a>
   </div>
-  <button class="burger" id="burger"><span></span><span></span><span></span></button>
+  <button class="burger" id="burger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+
 <div class="mob-nav" id="mobNav">
   <a href="index.html">Home</a>
   <a href="photography.html">Photography</a>
   <a href="consulting.html">Consulting</a>
   <a href="contact.html">Contact</a>
-  <a href="portfolio.html">Portfolio</a>
+  <a href="photography.html">Portfolio</a>
+  <a href="booking.html">Book Now</a>
 </div>
 
-<div style="max-width:960px;margin:0 auto;padding:calc(var(--nav-h) + 3rem) 2rem 5rem">
-
-  <div style="margin-bottom:2.5rem">
-    <div class="mini-robot" style="margin-bottom:1.2rem">
-      <div class="mini-rb-head">
-        <div class="mini-rb-tip"></div>
-        <div style="display:flex;gap:3px"><div class="mini-rb-eye"></div><div class="mini-rb-eye"></div></div>
-      </div>
-      <span style="font-family:var(--font-m);font-size:.65rem;letter-spacing:.1em;color:var(--muted)">BOOKING SYSTEM</span>
+<!-- Hero -->
+<div class="page-hero" style="position:relative;z-index:2;">
+  <!-- Mini robot -->
+  <div class="mini-robot" style="margin-bottom:1.5rem">
+    <div class="mini-rb-head">
+      <div class="mini-rb-tip"></div>
+      <div style="display:flex;gap:3px"><div class="mini-rb-eye"></div><div class="mini-rb-eye"></div></div>
     </div>
-    <h1 style="font-size:clamp(1.8rem,4vw,3rem);font-weight:800;letter-spacing:-.04em;margin-bottom:.6rem">Book Your Session</h1>
-    <p style="font-size:.85rem;color:var(--muted);line-height:1.7">Select a service, choose a date and time, fill in your details and confirm. Payment info is provided after confirmation.</p>
+    <span style="font-family:var(--font-m);font-size:.65rem;letter-spacing:.1em;color:var(--muted)">CLEXYT VISUAL ARTS</span>
   </div>
-
-  <!-- Step bar -->
-  <div class="step-bar" id="stepBar">
-    <div class="step-item active" data-step="1">01 — Service</div>
-    <div class="step-item" data-step="2">02 — Date &amp; Time</div>
-    <div class="step-item" data-step="3">03 — Your Details</div>
-    <div class="step-item" data-step="4">04 — Confirm</div>
-  </div>
-
-  <!-- Step 1: Service -->
-  <div class="bk-step active" id="s1">
-    <div class="pkg-grid">
-
-      <div class="pkg-card" data-service="Short Photoshoot" data-price="800" data-deposit="450" data-duration="2">
-        <div class="pkg-tag">OUTDOOR / YOUR LOCATION</div>
-        <h3>Short Photoshoot</h3>
-        <p class="pkg-desc">20 professionally edited images at a location of your choice.</p>
-        <div class="pkg-price">R800</div>
-        <div class="pkg-deposit">Deposit to confirm: R450</div>
-        <ul class="pkg-features">
-          <li>20 edited images</li><li>Outdoor / on-location</li><li>Digital delivery</li>
-        </ul>
-        <button class="pkg-select">Select</button>
-      </div>
-
-      <div class="pkg-card" data-service="Photoshoot + Video" data-price="1000" data-deposit="550" data-duration="3">
-        <div class="pkg-tag popular">MOST POPULAR</div>
-        <h3>Photoshoot + Free Short Video</h3>
-        <p class="pkg-desc">Full photo session plus a complimentary short-form video.</p>
-        <div class="pkg-price">R1,000</div>
-        <div class="pkg-deposit">Deposit to confirm: R550</div>
-        <ul class="pkg-features">
-          <li>Full edited gallery</li><li>1 free short video</li><li>Outdoor / your location</li>
-        </ul>
-        <button class="pkg-select">Select</button>
-      </div>
-
-      <div class="pkg-card" data-service="Studio Shoot + Video" data-price="1700" data-deposit="1000" data-duration="4">
-        <div class="pkg-tag">STUDIO</div>
-        <h3>Studio Shoot + Video</h3>
-        <p class="pkg-desc">Professional studio with full lighting setup and a free short video.</p>
-        <div class="pkg-price">R1,700</div>
-        <div class="pkg-deposit">Deposit to confirm: R1,000</div>
-        <ul class="pkg-features">
-          <li>Studio with lighting rig</li><li>Fully retouched gallery</li><li>1 free short video</li>
-        </ul>
-        <button class="pkg-select">Select</button>
-      </div>
-
-      <div class="pkg-card" data-service="Video Shoot (Outdoor)" data-price="2200" data-deposit="1200" data-duration="6">
-        <div class="pkg-tag">VIDEO — OUTDOOR</div>
-        <h3>Video Shoot (Outdoor)</h3>
-        <p class="pkg-desc">Full outdoor video production — promos, music videos, social content.</p>
-        <div class="pkg-price">R2,200</div>
-        <div class="pkg-deposit">Deposit to confirm: R1,200</div>
-        <ul class="pkg-features">
-          <li>Full colour graded edit</li><li>1 revision included</li><li>HD / 4K delivery</li>
-        </ul>
-        <button class="pkg-select">Select</button>
-      </div>
-
-      <div class="pkg-card" data-service="Video Shoot (Studio)" data-price="3200" data-deposit="1200" data-duration="8">
-        <div class="pkg-tag">VIDEO — STUDIO</div>
-        <h3>Video Shoot (Studio)</h3>
-        <p class="pkg-desc">Controlled studio environment for commercial or music video production.</p>
-        <div class="pkg-price">R3,200</div>
-        <div class="pkg-deposit">Deposit to confirm: R1,200</div>
-        <ul class="pkg-features">
-          <li>Studio / indoor</li><li>Full edit + colour grade</li><li>2 revisions included</li>
-        </ul>
-        <button class="pkg-select">Select</button>
-      </div>
-
-    </div>
-    <div class="warn-box">
-      <span>&#9888;</span>
-      <div><strong>72-hour advance payment required.</strong> All bookings must be paid at least 72 hours before the session. Unpaid bookings are automatically cancelled.</div>
-    </div>
-    <div class="nav-btns">
-      <button class="btn-back" onclick="window.location.href='index.html'">&#8592; Back to Site</button>
-      <button class="btn-next" onclick="nextStep(1)">Next: Choose Date &#8594;</button>
-    </div>
-  </div>
-
-  <!-- Step 2: Date & Time -->
-  <div class="bk-step" id="s2">
-    <div class="cal-section">
-      <h2>Select Date &amp; Time</h2>
-      <p style="margin-bottom:1.5rem">Pick a date — times already booked in my calendar will be greyed out automatically.</p>
-
-
-
-      <input type="text" id="datePicker" class="date-input" placeholder="Pick a date" readonly>
-      <div id="slotsWrap"></div>
-      <div class="slot-legend">
-        <div class="legend-item"><div class="legend-dot" style="border:1px solid rgba(0,240,224,0.35)"></div> Available</div>
-        <div class="legend-item"><div class="legend-dot" style="background:rgba(0,240,224,0.2);border:1px solid var(--cyan)"></div> Selected</div>
-      </div>
-    </div>
-    <div class="nav-btns">
-      <button class="btn-back" onclick="prevStep(2)">&#8592; Back</button>
-      <button class="btn-next" onclick="nextStep(2)">Next: Your Details &#8594;</button>
-    </div>
-  </div>
-
-  <!-- Step 3: Details -->
-  <div class="bk-step" id="s3">
-    <div class="form-section">
-      <h2>Your Details</h2>
-      <div class="form-row">
-        <div class="form-group"><label>Full Name *</label><input type="text" id="bkName" required placeholder="Your full name"></div>
-        <div class="form-group"><label>Email *</label><input type="email" id="bkEmail" required placeholder="email@example.com"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Phone / WhatsApp *</label><input type="tel" id="bkPhone" required placeholder="074 000 0000"></div>
-        <div class="form-group"><label>Location / Area</label><input type="text" id="bkLocation" placeholder="Where are you based?"></div>
-      </div>
-      <div class="form-group"><label>Special Requirements</label><textarea id="bkNotes" rows="3" placeholder="Themes, outfits, specific needs..."></textarea></div>
-    </div>
-    <div class="nav-btns">
-      <button class="btn-back" onclick="prevStep(3)">&#8592; Back</button>
-      <button class="btn-next" onclick="nextStep(3)">Next: Review &#8594;</button>
-    </div>
-  </div>
-
-  <!-- Step 4: Confirm -->
-  <div class="bk-step" id="s4">
-    <div class="summary-section">
-      <h2 style="font-size:1.1rem;margin-bottom:1.5rem">Review Your Booking</h2>
-      <div class="summary-row"><span class="summary-label">SERVICE</span><span class="summary-val" id="sumService">—</span></div>
-      <div class="summary-row"><span class="summary-label">DATE</span><span class="summary-val" id="sumDate">—</span></div>
-      <div class="summary-row"><span class="summary-label">TIME</span><span class="summary-val" id="sumTime">—</span></div>
-      <div class="summary-row"><span class="summary-label">DURATION</span><span class="summary-val" id="sumDuration">—</span></div>
-      <div class="summary-row"><span class="summary-label">NAME</span><span class="summary-val" id="sumName">—</span></div>
-      <div class="summary-row"><span class="summary-label">CONTACT</span><span class="summary-val" id="sumContact">—</span></div>
-      <div class="summary-row"><span class="summary-label">BOOKING REF</span><span class="summary-val" id="sumRef" style="color:var(--cyan);font-family:var(--font-m)">—</span></div>
-      <div class="summary-row" style="border-bottom:none;padding-top:1.2rem">
-        <span class="summary-label">DEPOSIT DUE</span>
-        <span class="summary-val summary-total" id="sumDeposit">—</span>
-      </div>
-    </div>
-
-    <div class="bank-box">
-      <h4>PAYMENT DETAILS — EFT / BANK TRANSFER</h4>
-      <div class="bank-grid">
-        <div class="bank-item"><div class="bank-label">BANK</div><div class="bank-val">STANDARD BANK</div></div>
-        <div class="bank-item"><div class="bank-label">ACCOUNT HOLDER</div><div class="bank-val">CLEVITA</div></div>
-        <div class="bank-item"><div class="bank-label">ACCOUNT NUMBER</div><div class="bank-val">10256947684</div></div>
-        <div class="bank-item"><div class="bank-label">BRANCH CODE</div><div class="bank-val">001545</div></div>
-        <div class="bank-item"><div class="bank-label">REFERENCE</div><div class="bank-val" id="bankRef">CLEV-XXXXXX</div></div>
-      </div>
-    </div>
-
-    <div class="warn-box">
-      <span>&#9888;</span>
-      <div>Complete the deposit via EFT and <strong>WhatsApp proof of payment</strong> to 074 295 9835 within 24 hours. Use your booking reference as payment reference.</div>
-    </div>
-
-    <div class="nav-btns">
-      <button class="btn-back" onclick="prevStep(4)">&#8592; Back</button>
-      <button class="btn-confirm" id="confirmBtn" onclick="confirmBooking()">&#10003; Confirm Booking</button>
-    </div>
-  </div>
-
-  <!-- Success -->
-  <div class="success-wrap" id="successWrap">
-    <div class="success-icon">&#10003;</div>
-    <h2 style="font-size:1.8rem;margin-bottom:.8rem">Booking Submitted!</h2>
-    <p style="color:var(--muted);margin-bottom:1.5rem">Your booking request has been received. Details saved to file automatically.</p>
-    <div class="ref-code" id="successRef">CLEV-XXXXXX</div>
-    <p style="font-size:.82rem;color:var(--muted);margin:1.2rem 0 2rem;line-height:1.7">
-      WhatsApp proof of payment to <strong style="color:var(--text)">074 295 9835</strong> within 24 hours to confirm your slot.<br>
-      Email: <strong style="color:var(--text)">cletusmulaudi32@gmail.com</strong>
-    </p>
-    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
-      <a href="index.html" class="btn-back" style="text-decoration:none">&#8592; Home</a>
-      <a href="booking.html" class="btn-next" style="text-decoration:none">New Booking</a>
-    </div>
-  </div>
-
+  <div class="page-tag">Photography &amp; Videography</div>
+  <h1>VISUAL<br>ARCHITECTURE.</h1>
+  <p> Outdoor sessions, studio shoots, commercial video and event coverage — all fully edited and delivered fast.</p>
 </div>
 
-<footer class="site-footer">
+<!-- Services -->
+<section class="services-section" style="position:relative;z-index:2;">
+  <div class="services-grid" style="position:relative;z-index:2;">
+
+    <div class="svc-card">
+      <div class="svc-badge">OUTDOOR / ON-LOCATION</div>
+      <h3>Short Photoshoot</h3>
+      <p class="svc-desc">20 professionally edited images. Taken at your location or outdoors of your choice.</p>
+      <div class="svc-price">R800</div>
+      <div class="svc-deposit">Deposit: R450 to confirm</div>
+      <ul class="svc-features">
+        <li>20 edited images</li>
+        <li>Outdoor / your location</li>
+        <li>1–2 hour session</li>
+        <li>Digital delivery</li>
+      </ul>
+      <a href="booking.html?service=short-photoshoot&price=800" class="svc-book">Book This Session</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">MOST POPULAR</div>
+      <h3>Photoshoot + Free Short Video</h3>
+      <p class="svc-desc">Full outdoor photoshoot with a complimentary short-form video included at no extra cost.</p>
+      <div class="svc-price">R1,000</div>
+      <div class="svc-deposit">Deposit: R550 to confirm</div>
+      <ul class="svc-features">
+        <li>Full edited gallery</li>
+        <li>Outdoor / your location</li>
+        <li>1 free short video</li>
+        <li>Digital delivery</li>
+      </ul>
+      <a href="booking.html?service=photoshoot-video&price=1000" class="svc-book">Book This Session</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">STUDIO</div>
+      <h3>Studio Photoshoot + Video</h3>
+      <p class="svc-desc">Professional studio environment with full lighting setup and a free short video included.</p>
+      <div class="svc-price">R1,700</div>
+      <div class="svc-deposit">Deposit: R1,000 to confirm</div>
+      <ul class="svc-features">
+        <li>Studio with lighting rig</li>
+        <li>Multiple setups</li>
+        <li>1 free short video</li>
+        <li>Fully retouched gallery</li>
+      </ul>
+      <a href="booking.html?service=studio&price=1700" class="svc-book">Book This Session</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">VIDEO — OUTDOOR</div>
+      <h3>Video Shoot (Outdoors)</h3>
+      <p class="svc-desc">Full outdoor video production — music videos, promos, social content and more.</p>
+      <div class="svc-price">R2,200</div>
+      <div class="svc-deposit">Deposit: R1,200 to confirm</div>
+      <ul class="svc-features">
+        <li>Full production outdoors</li>
+        <li>Colour graded edit</li>
+        <li>1 revision included</li>
+        <li>HD / 4K delivery</li>
+      </ul>
+      <a href="booking.html?service=video-outdoor&price=2200" class="svc-book">Book This Session</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">VIDEO — STUDIO</div>
+      <h3>Video Shoot (Studio / Indoor)</h3>
+      <p class="svc-desc">Controlled studio environment for commercial, music or brand video production.</p>
+      <div class="svc-price">R3,200</div>
+      <div class="svc-deposit">Deposit: R1,200 to confirm</div>
+      <ul class="svc-features">
+        <li>Studio / indoor shoot</li>
+        <li>Professional lighting</li>
+        <li>Full edit + colour grade</li>
+        <li>2 revisions included</li>
+      </ul>
+      <a href="booking.html?service=video-studio&price=3200" class="svc-book">Book This Session</a>
+    </div>
+
+    <div class="svc-card" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:240px;gap:1rem">
+      <div style="font-family:var(--font-m);font-size:.7rem;letter-spacing:.14em;color:var(--muted)">NEED SOMETHING CUSTOM?</div>
+      <h3>Get a Quote</h3>
+      <p class="svc-desc">Weddings, corporate events, content creation packages — let's discuss.</p>
+      <a href="contact.html" class="svc-book">Get in Touch</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- Portfolio Gallery -->
+<section class="gallery-section" id="gallery" style="position:relative;">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem">
+    <div>
+      <h2 style="margin-bottom:.4rem">Portfolio</h2>
+  
+    </div>
+    <div style="font-family:var(--font-m);font-size:.65rem;letter-spacing:.1em;color:var(--muted)" id="galleryCount"></div>
+  </div>
+  <!-- Filter bar -->
+  <div class="gallery-filters" id="galleryFilters" style="display:none;gap:.6rem;margin-bottom:1.5rem;flex-wrap:wrap">
+    <button class="gf-btn active" data-filter="all">All</button>
+    <button class="gf-btn" data-filter="image">Photos</button>
+    <button class="gf-btn" data-filter="video">Video</button>
+  </div>
+  <div class="masonry-grid" id="galleryGrid"></div>
+</section>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <div class="lb-inner">
+    <button class="lb-close" id="lightboxClose">&#x2715;</button>
+    <button class="lb-nav lb-prev" id="lbPrev">&#8592;</button>
+    <div class="lb-media-wrap" id="lbMediaWrap">
+      <img id="lightboxImg" src="" alt="" style="display:none">
+      <video id="lightboxVid" src="" controls style="display:none;max-width:90vw;max-height:85vh"></video>
+    </div>
+    <button class="lb-nav lb-next" id="lbNext">&#8594;</button>
+    <div class="lb-counter" id="lbCounter"></div>
+  </div>
+</div>
+
+<style>
+/* Gallery filters */
+.gallery-filters { display:flex; }
+.gf-btn {
+  padding:.4rem 1rem; background:none;
+  border:1px solid var(--border); border-radius:2px;
+  font-family:var(--font-m); font-size:.68rem; letter-spacing:.1em;
+  color:var(--muted); cursor:none; transition:all .2s;
+}
+.gf-btn:hover { border-color:rgba(255,255,255,.2); color:var(--text); }
+.gf-btn.active { border-color:rgba(0,240,224,.4); color:var(--cyan); background:rgba(0,240,224,.05); }
+
+/* Masonry */
+.masonry-grid {
+  columns: 3;
+  column-gap: 4px;
+}
+@media(max-width:900px){ .masonry-grid{ columns:2; column-gap:3px; } }
+@media(max-width:480px){ .masonry-grid{ columns:1; } }
+
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 3px;
+  position: relative;
+  overflow: hidden;
+  cursor: none;
+  background: var(--card);
+  opacity: 0;
+}
+@keyframes masonryIn {
+  from { opacity:0; transform:translateY(28px) scale(0.97); }
+  to   { opacity:1; transform:none; }
+}
+.masonry-item.visible {
+  animation: masonryIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.masonry-item img, .masonry-item video {
+  width: 100%;
+  display: block;
+  transition: transform .6s cubic-bezier(.4,0,.2,1), filter .4s;
+  filter: brightness(.9) saturate(.95);
+}
+.masonry-item:hover img,
+.masonry-item:hover video { transform: scale(1.05); filter: brightness(1.05) saturate(1.15); }
+
+/* Cyan corner accent on hover */
+.masonry-item::after {
+  content:'';
+  position:absolute; inset:0;
+  border:0px solid var(--cyan);
+  transition:border-width .25s, opacity .25s;
+  opacity:0; pointer-events:none; z-index:2;
+}
+.masonry-item:hover::after { border-width:1.5px; opacity:.35; }
+
+.masonry-overlay {
+  position: absolute; inset:0;
+  background: linear-gradient(to top, rgba(8,8,14,.85) 0%, transparent 55%);
+  opacity: 0; transition: opacity .35s;
+  display: flex; align-items: flex-end; justify-content:space-between;
+  padding: .9rem;
+}
+.masonry-item:hover .masonry-overlay { opacity:1; }
+.masonry-overlay-label {
+  font-family: var(--font-m);
+  font-size: .58rem;
+  letter-spacing: .14em;
+  color: rgba(255,255,255,.6);
+  text-transform: uppercase;
+}
+.masonry-overlay-expand {
+  width: 28px; height: 28px;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 50%;
+  display: flex; align-items:center; justify-content:center;
+  font-size: .7rem; color: rgba(255,255,255,.7);
+  flex-shrink: 0;
+}
+.masonry-video-badge {
+  position:absolute; top:.6rem; right:.6rem;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(4px);
+  border:1px solid rgba(255,255,255,.12); border-radius:2px;
+  padding:.2rem .5rem;
+  font-family:var(--font-m); font-size:.58rem; letter-spacing:.1em; color:var(--amber);
+}
+
+/* Masonry — varied sizing for cinematic feel */
+.masonry-item:nth-child(3n+1) { }
+.masonry-item:nth-child(3n+2) img { filter: brightness(.85) saturate(1.1); }
+.masonry-item:nth-child(5n) img { filter: brightness(.95) contrast(1.05); }
+
+/* Lightbox */
+.lightbox {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.96);
+  backdrop-filter: blur(12px);
+  z-index:10000;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity .4s cubic-bezier(.4,0,.2,1);
+}
+.lightbox.open { opacity:1; pointer-events:all; }
+.lb-inner {
+  position:relative; display:flex; align-items:center;
+  justify-content:center; width:100%; height:100%;
+}
+.lb-media-wrap {
+  display:flex; align-items:center; justify-content:center;
+  animation: lbReveal .35s cubic-bezier(.4,0,.2,1);
+}
+@keyframes lbReveal {
+  from { opacity:0; transform:scale(.95); }
+  to   { opacity:1; transform:scale(1); }
+}
+.lb-media-wrap img { max-width:88vw; max-height:88vh; object-fit:contain; }
+
+/* Close button — big, visible, always works */
+.lb-close {
+  position:absolute; top:1.2rem; right:1.2rem;
+  width:48px; height:48px;
+  background:rgba(255,255,255,.08);
+  border:1.5px solid rgba(255,255,255,.25);
+  border-radius:50%;
+  color:#fff;
+  font-size:1.3rem;
+  cursor:pointer !important;
+  transition:background .2s, border-color .2s, transform .2s;
+  display:flex; align-items:center; justify-content:center;
+  z-index:10001;
+  line-height:1;
+}
+.lb-close:hover {
+  background:rgba(0,240,224,.15);
+  border-color:var(--cyan);
+  color:var(--cyan);
+  transform:rotate(90deg);
+}
+
+/* Nav arrows */
+.lb-nav {
+  position:absolute; top:50%; transform:translateY(-50%);
+  background:rgba(255,255,255,.06);
+  border:1.5px solid rgba(255,255,255,.15);
+  border-radius:50%;
+  color:rgba(255,255,255,.8); font-size:1.1rem;
+  width:52px; height:52px;
+  cursor:pointer !important;
+  transition:all .2s;
+  display:flex; align-items:center; justify-content:center;
+}
+.lb-nav:hover {
+  background:rgba(0,240,224,.1);
+  border-color:var(--cyan);
+  color:var(--cyan);
+  transform:translateY(-50%) scale(1.08);
+}
+.lb-prev { left:1.5rem; }
+.lb-next { right:1.5rem; }
+
+/* Counter + filename */
+.lb-counter {
+  position:absolute; bottom:1.5rem; left:50%; transform:translateX(-50%);
+  font-family:var(--font-m); font-size:.62rem; letter-spacing:.14em;
+  color:rgba(255,255,255,.35);
+  background:rgba(0,0,0,.4); padding:.3rem .8rem; border-radius:20px;
+}
+
+/* Tap hint on mobile */
+@media(max-width:768px) {
+  .lb-prev { left:.6rem; width:40px; height:40px; font-size:.9rem; }
+  .lb-next { right:.6rem; width:40px; height:40px; font-size:.9rem; }
+  .lb-close { top:.7rem; right:.7rem; width:42px; height:42px; }
+}
+</style>
+
+<footer class="site-footer" style="position:relative;z-index:2;">
   <div class="footer-inner">
     <div class="footer-brand">
       <div class="footer-logo">CLEXYT</div>
-      <p>Futuristic Media Production &amp; Technology Consulting</p>
-      <p>Johannesburg, South Africa</p>
+      <p>VISUAL ARCHITECTURE &amp; SYSTEM ARCHITECTURE</p>
+      <p>PRETORIA, South Africa</p>
     </div>
     <div class="footer-links">
       <a href="photography.html">Photography</a>
@@ -366,235 +422,184 @@
 
 <script src="starfield.js"></script>
 <script src="script.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
-'use strict';
+// ==============================
+// CLEXYT — Cinematic Gallery
+// ==============================
+let allItems = [];
+let lbIndex  = 0;
 
-const bk = { service:null, price:0, deposit:0, duration:0, date:null, time:null, client:{}, ref:null };
-let icsEvents = [];
-let currentStep = 1;
+async function loadGallery() {
+  const grid = document.getElementById('galleryGrid');
+  const countEl = document.getElementById('galleryCount');
 
-// Load ICS on start
-(async () => {
-  const events = await loadICSCalendar();
-  if (events) icsEvents = events;
-})();
-
-// Pre-fill from URL params
-const params = new URLSearchParams(location.search);
-if (params.get('service')) {
-  // Auto-select the matching card
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.pkg-card').forEach(c => {
-      if (c.dataset.service.toLowerCase().includes(params.get('service').replace(/-/g,' '))) {
-        selectPkg(c);
-      }
-    });
-  });
-}
-
-// Package selection — wrapped in DOMContentLoaded to ensure all elements exist
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.pkg-card').forEach(card => {
-    card.addEventListener('click', () => selectPkg(card));
-    card.querySelector('.pkg-select').addEventListener('click', e => { e.stopPropagation(); selectPkg(card); });
-  });
-});
-
-function selectPkg(card) {
-  document.querySelectorAll('.pkg-card').forEach(c => {
-    c.classList.remove('selected');
-    c.querySelector('.pkg-select').textContent = 'Select';
-  });
-  card.classList.add('selected');
-  card.querySelector('.pkg-select').textContent = 'Selected ✓';
-  bk.service  = card.dataset.service;
-  bk.price    = parseInt(card.dataset.price);
-  bk.deposit  = parseInt(card.dataset.deposit);
-  bk.duration = parseInt(card.dataset.duration);
-  showNotif('Service selected — pick your date & time', 'success');
-  setTimeout(() => goStep(2), 420);
-}
-
-// Calendar
-flatpickr('#datePicker', {
-  minDate: new Date(Date.now() + 72 * 3600 * 1000), // 72hr min advance
-  dateFormat: 'Y-m-d',
-  onChange([d], str) {
-    bk.date = str;
-    renderSlots(str);
-  }
-});
-
-function renderSlots(dateStr) {
-  const wrap = document.getElementById('slotsWrap');
-  // Only block hours from your real Google Calendar .ics file (if uploaded)
-  const bookedHours = getBookedHoursForDate(icsEvents, dateStr);
-
-  let html = '<div class="slots-grid">';
-  for (let h = 8; h <= 20; h++) {
-    const t = String(h).padStart(2,'0') + ':00';
-    const ampm = h < 12 ? 'AM' : 'PM';
-    const h12  = h === 12 ? 12 : h % 12;
-    const label = h12 + ':00 ' + ampm;
-    const isICS = bookedHours.includes(t);
-    const cls   = isICS ? 'time-slot booked-ics' : 'time-slot avail';
-    html += `<div class="${cls}" data-time="${t}" title="${label}">${label}${isICS ? '<br><span style="font-size:.52rem;color:var(--amber)">Booked</span>' : ''}</div>`;
-  }
-  html += '</div>';
-  wrap.innerHTML = html;
-
-  wrap.querySelectorAll('.time-slot.avail').forEach(s => {
-    s.addEventListener('click', () => {
-      wrap.querySelectorAll('.time-slot').forEach(x => x.classList.remove('selected'));
-      s.classList.add('selected');
-      bk.time = s.dataset.time;
-      showNotif('Time selected: ' + s.title, 'success');
-    });
-  });
-}
-
-// Step navigation
-function nextStep(from) {
-  if (from === 1 && !bk.service) return showNotif('Please select a service first', 'error');
-  if (from === 2) {
-    if (!bk.date) return showNotif('Please select a date', 'error');
-    if (!bk.time) return showNotif('Please select a time slot', 'error');
-  }
-  if (from === 3) {
-    const n = document.getElementById('bkName').value.trim();
-    const e = document.getElementById('bkEmail').value.trim();
-    const p = document.getElementById('bkPhone').value.trim();
-    if (!n || !e || !p) return showNotif('Please fill in all required fields', 'error');
-    bk.client = {name:n, email:e, phone:p, location:document.getElementById('bkLocation').value.trim(), notes:document.getElementById('bkNotes').value.trim()};
-    populateSummary();
-  }
-  goStep(from + 1);
-}
-
-function prevStep(from) { goStep(from - 1); }
-
-function goStep(n) {
-  currentStep = n;
-  document.querySelectorAll('.bk-step').forEach((s,i) => s.classList.toggle('active', i+1===n));
-  document.querySelectorAll('.step-item').forEach(item => {
-    const sn = parseInt(item.dataset.step);
-    item.classList.toggle('active', sn === n);
-    item.classList.toggle('done', sn < n);
-  });
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-
-function populateSummary() {
-  if (!bk.ref) bk.ref = 'CLEV-' + Date.now().toString(36).toUpperCase().slice(-6);
-  document.getElementById('sumService').textContent  = bk.service;
-  document.getElementById('sumDate').textContent     = bk.date;
-  document.getElementById('sumTime').textContent     = bk.time;
-  document.getElementById('sumDuration').textContent = bk.duration + ' hours (approx)';
-  document.getElementById('sumName').textContent     = bk.client.name;
-  document.getElementById('sumContact').textContent  = bk.client.email + ' · ' + bk.client.phone;
-  document.getElementById('sumRef').textContent      = bk.ref;
-  document.getElementById('sumDeposit').textContent  = 'R' + bk.deposit.toLocaleString();
-  document.getElementById('bankRef').textContent     = bk.ref;
-}
-
-// =====================================================
-// FORMSPREE ENDPOINT — paste your URL here after
-// signing up free at formspree.io
-// Looks like: https://formspree.io/f/xyzabc12
-// =====================================================
-const FORMSPREE_URL = 'https://formspree.io/f/mgoapgqe';
-
-async function confirmBooking() {
-  const btn = document.getElementById('confirmBtn');
-  btn.textContent = 'Sending...';
-  btn.disabled = true;
-
-  const data = { ...bk, createdAt: new Date().toISOString(), status: 'pending_payment' };
-
-  // 1. POST to Formspree — you get an email instantly
   try {
-    await fetch(FORMSPREE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        _subject: `New Booking — ${data.service} — ${data.ref}`,
-        booking_reference:  data.ref,
-        service:            data.service,
-        date:               data.date,
-        time:               data.time,
-        duration:           data.duration + ' hours',
-        total_price:        'R' + data.price,
-        deposit_due:        'R' + data.deposit,
-        client_name:        data.client.name,
-        client_email:       data.client.email,
-        client_phone:       data.client.phone,
-        client_location:    data.client.location || 'Not specified',
-        special_notes:      data.client.notes || 'None',
-        submitted_at:       new Date().toLocaleString('en-ZA', {timeZone:'Africa/Johannesburg'}),
-        payment_instruction:'EFT deposit within 24 hours. Reference: ' + data.ref + '. WhatsApp proof to 074 295 9835.'
-      })
-    });
-  } catch(e) {
-    // If Formspree fails, still continue — WhatsApp is the backup
-    console.warn('Formspree error:', e);
+    const res = await fetch('images/manifest.json?v=' + Date.now());
+    if (!res.ok) throw new Error('No manifest');
+    const manifest = await res.json();
+
+    manifest.images?.forEach(f => allItems.push({ src:'images/'+f, type:'image', name:f }));
+    manifest.videos?.forEach(f => allItems.push({ src:'videos/'+f, type:'video', name:f }));
+  } catch(e) {}
+
+  if (!allItems.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;padding:5rem 2rem;text-align:center;border:1px dashed rgba(255,255,255,.08);border-radius:2px;font-family:var(--font-m);font-size:.75rem;color:var(--muted);line-height:2">
+      Portfolio loads automatically.<br>
+      1. Add photos to <span style="color:var(--cyan)">/images/</span> folder<br>
+      2. Run <span style="color:var(--cyan)">python3 update_gallery.py</span><br>
+      3. git push
+    </div>`;
+    return;
   }
 
-  // 2. Save .txt file to client's device as their receipt
-  const txt = [
-    'CLEXYT BOOKING CONFIRMATION',
-    '='.repeat(38),
-    'Ref: ' + data.ref,
-    'Submitted: ' + new Date().toLocaleString('en-ZA'),
-    '',
-    'SERVICE:   ' + data.service,
-    'DATE:      ' + data.date,
-    'TIME:      ' + data.time,
-    'DURATION:  ' + data.duration + ' hours',
-    'PRICE:     R' + data.price,
-    'DEPOSIT:   R' + data.deposit,
-    '',
-    'CLIENT:    ' + data.client.name,
-    'EMAIL:     ' + data.client.email,
-    'PHONE:     ' + data.client.phone,
-    'LOCATION:  ' + (data.client.location || 'N/A'),
-    'NOTES:     ' + (data.client.notes || 'None'),
-    '',
-    'PAYMENT',
-    '='.repeat(38),
-    'Pay deposit via EFT within 24 hours.',
-    'Use reference: ' + data.ref,
-    'WhatsApp proof of payment to: 074 295 9835',
-    'Email: cletusmulaudi32@gmail.com'
-  ].join('\n');
+  // Show filter bar if we have both types
+  const hasVideo = allItems.some(i => i.type === 'video');
+  const hasImage = allItems.some(i => i.type === 'image');
+  if (hasVideo && hasImage) {
+    document.getElementById('galleryFilters').style.display = 'flex';
+  }
 
-  const blob = new Blob([txt], {type:'text/plain'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'clexyt-booking-' + data.ref + '.txt'; a.style.display='none';
-  document.body.appendChild(a); a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
+  countEl.textContent = allItems.length + ' items';
 
-  // 3. Open WhatsApp — instant ping to your phone
-  const waMsg = encodeURIComponent(
-    '*NEW CLEXYT BOOKING*\n' +
-    'Ref: ' + data.ref + '\n\n' +
-    'Service: ' + data.service + '\n' +
-    'Date: ' + data.date + ' at ' + data.time + '\n' +
-    'Name: ' + data.client.name + '\n' +
-    'Phone: ' + data.client.phone + '\n' +
-    'Deposit: R' + data.deposit + '\n\n' +
-    'Full details sent to your email.'
-  );
-  setTimeout(() => window.open('https://wa.me/27742959835?text=' + waMsg, '_blank'), 700);
+  // Shuffle for natural variety
+  allItems.sort(() => Math.random() - .5);
 
-  // 4. Show success screen
-  setTimeout(() => {
-    document.querySelectorAll('.bk-step').forEach(s => s.classList.remove('active'));
-    document.getElementById('successRef').textContent = data.ref;
-    document.getElementById('successWrap').classList.add('show');
-    window.scrollTo({top:0,behavior:'smooth'});
-  }, 1100);
+  renderGrid(allItems);
+  initFilters();
+}
+
+function renderGrid(items) {
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = '';
+
+  items.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'masonry-item';
+    div.dataset.type = item.type;
+    div.dataset.index = allItems.indexOf(item);
+
+    if (item.type === 'image') {
+      div.innerHTML = `
+        <img src="${item.src}" alt="Portfolio ${i+1}" loading="lazy">
+        <div class="masonry-overlay">
+          <span class="masonry-overlay-label">View full size</span>
+        </div>`;
+    } else {
+      div.innerHTML = `
+        <video src="${item.src}" muted loop autoplay playsinline preload="metadata"></video>
+        <div class="masonry-video-badge">▶ VIDEO</div>
+        <div class="masonry-overlay">
+          <span class="masonry-overlay-label">Play</span>
+          <span class="masonry-overlay-expand">&#9654;</span>
+        </div>`;
+    }
+
+    div.addEventListener('click', () => openLightbox(allItems.indexOf(item)));
+    grid.appendChild(div);
+
+    // Staggered animation — delay increases per item, capped at 900ms
+    const delay = Math.min(i * 65, 900);
+    div.style.animationDelay = delay + 'ms';
+    // IntersectionObserver triggers animation class (animation-delay handles stagger)
+    (function(el) {
+      const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            obs.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.04, rootMargin: '0px 0px -10px 0px' });
+      obs.observe(el);
+    })(div);
+  });
+}
+
+function initFilters() {
+  document.querySelectorAll('.gf-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.gf-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.dataset.filter;
+      const filtered = f === 'all' ? allItems : allItems.filter(i => i.type === f);
+      renderGrid(filtered);
+    });
+  });
+}
+
+// Lightbox
+function openLightbox(idx) {
+  lbIndex = idx;
+  showLbItem(idx);
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function showLbItem(idx) {
+  const item = allItems[idx];
+  const img = document.getElementById('lightboxImg');
+  const vid = document.getElementById('lightboxVid');
+  const counter = document.getElementById('lbCounter');
+
+  if (item.type === 'image') {
+    img.src = item.src; img.style.display = 'block';
+    vid.style.display = 'none'; vid.pause();
+  } else {
+    vid.src = item.src; vid.style.display = 'block'; vid.load();
+    img.style.display = 'none';
+  }
+  counter.textContent = (idx + 1) + ' / ' + allItems.length;
+}
+
+function closeLb() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightboxVid').pause();
+  document.body.style.overflow = '';
+}
+
+document.getElementById('lightboxClose').addEventListener('click', closeLb);
+document.getElementById('lightbox').addEventListener('click', e => { if (e.target === document.getElementById('lightbox') || e.target === document.querySelector('.lb-inner')) closeLb(); });
+document.getElementById('lbPrev').addEventListener('click', e => { e.stopPropagation(); lbIndex = (lbIndex - 1 + allItems.length) % allItems.length; showLbItem(lbIndex); });
+document.getElementById('lbNext').addEventListener('click', e => { e.stopPropagation(); lbIndex = (lbIndex + 1) % allItems.length; showLbItem(lbIndex); });
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('open')) return;
+  if (e.key === 'Escape') closeLb();
+  if (e.key === 'ArrowLeft') { lbIndex = (lbIndex - 1 + allItems.length) % allItems.length; showLbItem(lbIndex); }
+  if (e.key === 'ArrowRight') { lbIndex = (lbIndex + 1) % allItems.length; showLbItem(lbIndex); }
+});
+
+// Touch swipe for lightbox
+let touchStartX = 0;
+document.getElementById('lightbox').addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+document.getElementById('lightbox').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) {
+    lbIndex = dx < 0 ? (lbIndex + 1) % allItems.length : (lbIndex - 1 + allItems.length) % allItems.length;
+    showLbItem(lbIndex);
+  }
+});
+
+loadGallery();
+</script>
+
+<script>
+// Scroll to Portfolio/gallery section on arrival
+function scrollToGallery() {
+  var el = document.getElementById('gallery');
+  if (!el) return;
+  var navH = (document.getElementById('nav') || {}).offsetHeight || 64;
+  var top = el.getBoundingClientRect().top + window.scrollY - navH - 12;
+  window.scrollTo({ top: top, behavior: 'smooth' });
+}
+
+if (window.location.hash === '#gallery') {
+  // First attempt after DOM ready
+  window.addEventListener('load', function() {
+    // Short wait for arrival cover to release, then scroll
+    setTimeout(scrollToGallery, 200);
+    // Second attempt in case mobile painted late
+    setTimeout(scrollToGallery, 700);
+  });
 }
 </script>
 </body>
