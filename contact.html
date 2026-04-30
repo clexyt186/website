@@ -1,6 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- ARRIVAL COVER — runs before any paint, prevents flash -->
+  <script>
+  (function(){
+    try {
+      if (sessionStorage.getItem('clxArriving') !== '1') return;
+      sessionStorage.removeItem('clxArriving');
+      document.documentElement.style.background = '#060609';
+      var s = document.createElement('style');
+      s.id = 'clxCover';
+      s.textContent = 'body{opacity:0!important;transition:none!important}';
+      document.head.appendChild(s);
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var el = document.getElementById('clxCover');
+          if (el) el.textContent = 'body{opacity:1;transition:opacity .55s ease}';
+        }, 80);
+      });
+    } catch(e){}
+  })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contact — CLEXYT</title>
