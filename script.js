@@ -123,39 +123,28 @@ try {
   }
 
   /* Public API — called with duration ms and optional callback fired near end */
-  window.__clxWarp = function(ms, labelText, subText, onMidpoint) {
+  window.__clxWarp = function(ms, onDone) {
     if (wRunning) return;
     ms = ms || 1500;
     wInit(); wMake(); wFrame = 0; wRunning = true;
 
-    /* Cover screen INSTANTLY — no fade-in delay, no flash of page behind */
+    /* INSTANTLY cover screen — no transition, no delay */
     wc.style.transition = 'none';
     wc.style.opacity = '1';
     wDraw();
 
-    /* Show main label after 180ms */
-    label.textContent = labelText || 'CLEVITA';
-    sub.textContent   = '';
-    sub.style.opacity = '0';
-    setTimeout(() => { label.style.opacity = '1'; }, 180);
+    /* CLEVITA appears after 200ms */
+    label.textContent = 'CLEVITA';
+    setTimeout(() => { label.style.opacity = '1'; }, 200);
 
-    /* Show sub-label if provided */
-    if (subText) {
-      setTimeout(() => { sub.textContent = subText; sub.style.opacity = '1'; }, ms * 0.65);
-    }
-
-    /* Midpoint callback — fire at 80% so page loads under cover */
-    if (onMidpoint) setTimeout(onMidpoint, Math.floor(ms * 0.80));
-
-    /* Fade out warp after full duration */
+    /* Navigate at FULL end of warp duration.
+       Warp canvas lives on old page and dies with it — that's fine.
+       The arrival cover on the new page handles the landing instantly. */
     setTimeout(() => {
       label.style.opacity = '0';
-      sub.style.opacity   = '0';
       wRunning = false;
       cancelAnimationFrame(wId);
-      wc.style.transition = 'opacity .45s cubic-bezier(.4,0,.2,1)';
-      wc.style.opacity = '0';
-      setTimeout(() => wctx.clearRect(0,0,wW,wH), 500);
+      if (onDone) onDone();
     }, ms);
   };
 
@@ -185,8 +174,9 @@ try {
     /* Flag for the arriving page — it covers itself immediately */
     try { sessionStorage.setItem('clxArriving', '1'); } catch(err) {}
 
-    /* Warp for 1.5s, navigate at 80% through (≈1200ms) */
-    window.__clxWarp(1500, 'CLEVITA', null, () => {
+    /* Warp plays full 1.5s, then navigate.
+       Arrival cover on new page handles the dark landing. */
+    window.__clxWarp(1500, () => {
       window.location.href = href;
     });
 
