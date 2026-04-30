@@ -104,6 +104,34 @@
     .vibes-mob-wrap { display:none; justify-content:center; align-items:center; padding:6px 1rem; background:var(--ink); }
     @media (max-width:768px) { .vibes-mob-wrap { display:flex; } }
   </style>
+
+<style>
+.nav-pinch-hint {
+  display: none;
+}
+@media (max-width: 768px) {
+  .nav-pinch-hint {
+    display: inline-flex;
+    align-items: center;
+    font-family: "Space Mono", monospace;
+    font-size: .45rem;
+    letter-spacing: .12em;
+    color: rgba(0,240,224,.62);
+    background: rgba(0,240,224,.055);
+    border: 1px solid rgba(0,240,224,.22);
+    border-radius: 20px;
+    padding: .18rem .55rem;
+    white-space: nowrap;
+    margin: 0 auto;
+    animation: navPinchGlow 2.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes navPinchGlow {
+    0%,100% { box-shadow: 0 0 4px rgba(0,240,224,.15); }
+    50%      { box-shadow: 0 0 10px rgba(0,240,224,.45), 0 0 20px rgba(0,240,224,.12); }
+  }
+}
+</style>
 </head>
 <body>
 
@@ -124,6 +152,7 @@
 <!-- ═══ NAV ════════════════════════════════════════════════════ -->
 <nav id="nav">
   <a href="index.html" class="nav-logo">CLEXYT<span class="nav-dot"></span></a>
+  <span class="nav-pinch-hint">pinch to zoom</span>
   <div class="nav-links">
     <a href="photography.html">Photography</a>
     <a href="consulting.html">Consulting</a>
