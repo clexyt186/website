@@ -16,12 +16,15 @@
 
   /* ── CONFIG (40% slower than bakgorund.html) ─────────────────── */
   const STAR_COUNT          = 580;   // rich but sparse feeling — spread wide
-  const ATTRACT_RADIUS      = 160;   // px — stars within this move toward cursor
-  const OUTSIDE_DRIFT       = 0.17;  // 40% slower than 0.28
-  const ATTRACTION_FORCE    = 0.013; // 40% slower than 0.022
-  const MAX_ATTRACT_STEP    = 1.14;  // 40% slower than 1.9
-  const MIN_ATTRACT_STEP    = 0.24;  // 40% slower than 0.4
   const IDLE_RESET_SECS     = 10;    // seconds before attractor returns to centre
+  const OUTSIDE_DRIFT       = 0.17;
+
+  // Mobile gets stronger attraction so stars visibly rush to touch point
+  const isMob = ('ontouchstart' in window);
+  const ATTRACT_RADIUS      = isMob ? 220  : 160;   // bigger radius on mobile
+  const ATTRACTION_FORCE    = isMob ? 0.032 : 0.013; // faster pull on mobile
+  const MAX_ATTRACT_STEP    = isMob ? 4.2  : 1.14;  // much faster on mobile
+  const MIN_ATTRACT_STEP    = isMob ? 0.6  : 0.24;
 
   /* ── STATE ───────────────────────────────────────────────────── */
   let W = window.innerWidth;
@@ -222,7 +225,23 @@
 
   // Mobile touch — document level so works everywhere on page
   document.addEventListener('touchstart', e => {
-    if (e.touches.length > 0) onMove(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length > 0) {
+      const tx2 = e.touches[0].clientX;
+      const ty2 = e.touches[0].clientY;
+      onMove(tx2, ty2);
+      // Burst: kick nearby stars toward tap point immediately
+      if (isMob) {
+        stars.forEach(s => {
+          const dx = tx2 - s.x, dy = ty2 - s.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < ATTRACT_RADIUS && dist > 0) {
+            const kick = (1 - dist / ATTRACT_RADIUS) * 5.5;
+            s.x += (dx / dist) * kick;
+            s.y += (dy / dist) * kick;
+          }
+        });
+      }
+    }
   }, { passive: true });
 
   document.addEventListener('touchmove', e => {
@@ -234,7 +253,7 @@
   }, { passive: true });
 
   // Gyroscope (mobile tilt)
-  if ('ontouchstart' in window && window.DeviceOrientationEvent) {
+  if (isMob && window.DeviceOrientationEvent) {
     function enableGyro() {
       window.addEventListener('deviceorientation', e => {
         if (e.gamma == null) return;
