@@ -333,7 +333,7 @@ body{overflow:hidden;}
 <div class="c-dot"></div>
 <div class="c-ring"></div>
 
-<!-- Starfield — handled entirely by starfield.js -->
+<!-- Starfield — handled by script.js -->
 <canvas id="starfield"></canvas>
 
 <!-- ══ NAV ══════════════════════════════════════════════════ -->
@@ -638,7 +638,6 @@ body{overflow:hidden;}
 </div>
 
 <!-- Load starfield first (isolated), then main script -->
-<script src="starfield.js"></script>
 <script src="script.js"></script>
 <script>
 'use strict';
@@ -683,7 +682,7 @@ body{overflow:hidden;}
       intro.classList.add('gone');
       try{sessionStorage.setItem('warpSeen','1');}catch(e){}
     },800);
-  },2000);
+  },1000);
 })();
 
 /* ══ SCROLL-DRIVEN 3D FOLD ════════════════════════════════ */
