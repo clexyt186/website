@@ -45,203 +45,6 @@ try {
 } catch(e){ console.warn('[CLX] touch-glow',e); }
 
 
-// ── 3. STARFIELD — dramatic reactive parallax ─────────────
-try {
-  const canvas=document.getElementById('starfield');
-  if (!canvas) throw new Error('no canvas');
-  const ctx=canvas.getContext('2d');
-  const isMob='ontouchstart' in window;
-  let W,H,stars=[],shooters=[];
-
-  // TARGET position (where cursor/finger is)
-  let tx, ty;
-  // CURRENT smoothed position
-  let cx, cy;
-
-  function init(){
-    W=canvas.width=innerWidth;
-    H=canvas.height=innerHeight;
-    // Always start at centre
-    tx=W/2; ty=H/2; cx=W/2; cy=H/2;
-  }
-
-  function makeStars(){
-    stars=[];
-    const n=Math.min(Math.floor(W*H/1400),900);
-    for(let i=0;i<n;i++){
-      const roll=Math.random();
-      stars.push({
-        // BASE position (where the star actually lives)
-        bx: Math.random()*W,
-        by: Math.random()*H,
-        r:  Math.random()*2.1+0.4,
-        a:  Math.random()*0.45+0.55,
-        tw: Math.random()*Math.PI*2,
-        ts: 0.009+Math.random()*0.022,
-        // Slow autonomous drift
-        ddx:(Math.random()-.5)*.055,
-        ddy:(Math.random()-.5)*.055,
-        // Depth 0.1–1.0: deeper = moves MORE with parallax (very visible)
-        d:  Math.random()*.9+0.1,
-        hue:roll<.07?'c':roll<.13?'a':'w',
-        // Physics velocity for attraction + burst
-        vx:0, vy:0
-      });
-    }
-  }
-
-  function addShooter(){
-    shooters.push({
-      x:Math.random()*W*.65, y:Math.random()*H*.3,
-      len:90+Math.random()*160, spd:13+Math.random()*10,
-      ang:Math.PI/4+(Math.random()-.5)*.55,
-      life:1, dec:.012+Math.random()*.011
-    });
-  }
-  addShooter();
-  setInterval(addShooter, 2200+Math.random()*2000);
-
-  function draw(){
-    // Semi-transparent wipe → motion trails so movement is unmissable
-    ctx.fillStyle='rgba(10,10,16,0.15)';
-    ctx.fillRect(0,0,W,H);
-
-    // FAST lerp — stars snap toward cursor quickly and visibly
-    // On mobile even faster so finger drag is immediately obvious
-    const lsp = isMob ? 0.35 : 0.18;
-    cx += (tx-cx)*lsp;
-    cy += (ty-cy)*lsp;
-
-    // How far cursor is from centre — this IS the parallax offset
-    const ox = cx - W/2;
-    const oy = cy - H/2;
-
-    for(const s of stars){
-      // Autonomous drift + physics velocity
-      s.bx += s.ddx + s.vx;
-      s.by += s.ddy + s.vy;
-      s.vx *= 0.88;
-      s.vy *= 0.88;
-      s.tw += s.ts;
-
-      // Wrap around edges
-      if(s.bx<0)s.bx=W; if(s.bx>W)s.bx=0;
-      if(s.by<0)s.by=H; if(s.by>H)s.by=0;
-
-      // PARALLAX: stars drawn offset from their base position.
-      // Deep stars (d≈1) shift up to 65% of cursor offset — unmissable.
-      // Shallow stars (d≈0.1) shift only 6.5% — creates real depth layers.
-      const fx = s.bx + ox * s.d * 0.65;
-      const fy = s.by + oy * s.d * 0.65;
-
-      // Magnetic attraction toward cursor
-      const ddx=cx-fx, ddy=cy-fy;
-      const dist=Math.sqrt(ddx*ddx+ddy*ddy);
-      const gr=Math.min(W,H)*.38;
-      if(dist<gr && dist>0){
-        const force=(1-dist/gr)*0.07;
-        s.vx += ddx*force*0.05;
-        s.vy += ddy*force*0.05;
-      }
-
-      const ta=s.a*(0.5+0.5*Math.sin(s.tw));
-      const proximity=Math.max(0,1-dist/(Math.min(W,H)*.25));
-      const boost=1+proximity*2.5;
-      const drawR=s.r*(1+proximity*.9);
-
-      ctx.beginPath();
-      ctx.arc(fx,fy,drawR,0,Math.PI*2);
-      if(s.hue==='c'){
-        ctx.fillStyle=`rgba(0,240,224,${Math.min(1,ta*boost)})`;
-        if(s.r>1||proximity>.2){ctx.shadowColor='rgba(0,240,224,.95)';ctx.shadowBlur=proximity>.2?20:8;}
-      } else if(s.hue==='a'){
-        ctx.fillStyle=`rgba(240,165,0,${Math.min(1,ta*boost)})`;
-        if(s.r>1){ctx.shadowColor='rgba(240,165,0,.85)';ctx.shadowBlur=8;}
-      } else {
-        ctx.fillStyle=`rgba(242,250,255,${Math.min(1,ta*boost*.9)})`;
-        if(proximity>.28){ctx.shadowColor='rgba(200,240,255,.7)';ctx.shadowBlur=7;}
-      }
-      ctx.fill();
-      ctx.shadowBlur=0;
-    }
-
-    // Shooting stars
-    for(let i=shooters.length-1;i>=0;i--){
-      const s=shooters[i];
-      s.x+=Math.cos(s.ang)*s.spd; s.y+=Math.sin(s.ang)*s.spd; s.life-=s.dec;
-      if(s.life<=0||s.x>W+300||s.y>H+300){shooters.splice(i,1);continue;}
-      const g=ctx.createLinearGradient(s.x-Math.cos(s.ang)*s.len,s.y-Math.sin(s.ang)*s.len,s.x,s.y);
-      g.addColorStop(0,'rgba(255,255,255,0)');
-      g.addColorStop(1,`rgba(255,255,255,${s.life*.92})`);
-      ctx.beginPath();
-      ctx.moveTo(s.x-Math.cos(s.ang)*s.len,s.y-Math.sin(s.ang)*s.len);
-      ctx.lineTo(s.x,s.y);
-      ctx.strokeStyle=g; ctx.lineWidth=1.7*s.life; ctx.stroke();
-    }
-
-    // Cursor glow on canvas
-    if(!isMob){
-      const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,200);
-      cg.addColorStop(0,'rgba(0,240,224,0.06)');
-      cg.addColorStop(1,'rgba(0,240,224,0)');
-      ctx.fillStyle=cg; ctx.fillRect(0,0,W,H);
-    }
-
-    requestAnimationFrame(draw);
-  }
-
-  // BURST on tap/click — scatter nearby stars
-  function burst(bx,by){
-    stars.forEach(s=>{
-      const dx=s.bx-bx, dy=s.by-by;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      if(dist<240&&dist>0){
-        const force=(1-dist/240)*5.5;
-        s.vx+=(dx/dist)*force; s.vy+=(dy/dist)*force;
-      }
-    });
-  }
-
-  init(); makeStars(); draw();
-  window.addEventListener('resize',()=>{init();makeStars();},{passive:true});
-
-  // PC — mouse moves stars
-  window.addEventListener('mousemove',e=>{tx=e.clientX;ty=e.clientY;},{passive:true});
-  window.addEventListener('click',e=>{if(!e.target.closest('a,button'))burst(e.clientX,e.clientY);},{passive:true});
-
-  // Mobile — finger moves stars
-  function onTouch(e){
-    if(e.touches&&e.touches.length>0){
-      tx=e.touches[0].clientX;
-      ty=e.touches[0].clientY;
-    }
-  }
-  document.addEventListener('touchstart',onTouch,{passive:true});
-  document.addEventListener('touchmove',onTouch,{passive:true});
-  document.addEventListener('touchend',e=>{
-    if(e.changedTouches.length>0) burst(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
-  },{passive:true});
-
-  // GYROSCOPE — tilt phone tilts the whole starfield
-  if(isMob && window.DeviceOrientationEvent){
-    function enableGyro(){
-      window.addEventListener('deviceorientation',e=>{
-        if(e.gamma==null)return;
-        const gx=Math.max(-50,Math.min(50,e.gamma));
-        const gy=Math.max(-40,Math.min(40,(e.beta||0)-20));
-        tx=W/2+(gx/50)*(W*.55);
-        ty=H/2+(gy/40)*(H*.44);
-      },{passive:true});
-    }
-    if(typeof DeviceOrientationEvent.requestPermission==='function'){
-      document.addEventListener('touchend',function ask(){
-        DeviceOrientationEvent.requestPermission().then(r=>{if(r==='granted')enableGyro();}).catch(()=>{});
-        document.removeEventListener('touchend',ask);
-      },{once:true});
-    } else { enableGyro(); }
-  }
-
-} catch(e){ console.warn('[CLX] starfield',e); }
 
 
 // ── 4. BURGER MENU ───────────────────────────────────────
@@ -330,10 +133,12 @@ try {
 // ── 6. WARP ON ALL PAGE NAVIGATION ───────────────────────
 try {
   // Intercept every internal link click — show warp then navigate
+  let _navLock = false;
   document.addEventListener('click',function(e){
     const a=e.target.closest('a[href]');
     if(!a)return;
     if(e.target.closest('#burger'))return;
+    if(_navLock)return; // prevent double-fire
 
     const href=a.getAttribute('href');
     if(!href||href==='#'||href.startsWith('#'))return;
@@ -342,8 +147,10 @@ try {
     if(href.includes('wa.me'))return;
 
     e.preventDefault();
+    _navLock = true;
     if(typeof window.__clxWarp==='function') window.__clxWarp(900);
-    setTimeout(()=>{ window.location.href=href; }, 820);
+    // Navigate only after warp is fully visible (avoid old-page flash)
+    setTimeout(()=>{ window.location.href=href; }, 850);
   },true);
 } catch(e){ console.warn('[CLX] page-warp',e); }
 
@@ -352,13 +159,21 @@ try {
 try {
   const sc=document.getElementById('siteScroll');
   if(sc){
-    let lastIdx=-1,snapT;
+    let lastIdx=-1, snapT, lastWarpTime=0;
     sc.addEventListener('scroll',()=>{
       clearTimeout(snapT);
       snapT=setTimeout(()=>{
         const idx=Math.round(sc.scrollTop/sc.clientHeight);
-        if(idx!==lastIdx){ lastIdx=idx; if(typeof window.__clxWarp==='function') window.__clxWarp(600); }
-      },80);
+        const now=Date.now();
+        // Only warp when landing on a NEW panel AND at least 1.2s since last warp
+        if(idx!==lastIdx && now-lastWarpTime>1200){
+          lastIdx=idx;
+          lastWarpTime=now;
+          if(typeof window.__clxWarp==='function') window.__clxWarp(600);
+        } else {
+          lastIdx=idx; // update idx without warping
+        }
+      },150); // longer debounce — wait for scroll to settle
     },{passive:true});
   }
 } catch(e){ console.warn('[CLX] scroll-warp',e); }

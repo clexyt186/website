@@ -13,6 +13,9 @@
 /* ── NO WHITE FLASH ── */
 html,body{background:#0a0a10;margin:0;padding:0;}
 body{overflow:hidden;}
+/* Content hidden until warp finishes on incoming pages */
+body.warp-arriving .panel,.warp-arriving #nav{opacity:0;transition:opacity .3s;}
+body.warp-done .panel,.warp-done #nav{opacity:1;}
 
 /* ── WARP INTRO ── */
 #warpIntro{
@@ -26,10 +29,15 @@ body{overflow:hidden;}
 #warpBg{position:absolute;inset:0;width:100%;height:100%;}
 #warpLogo{
   position:relative;z-index:2;
-  font-family:'Syne',sans-serif;font-size:clamp(2.2rem,9vw,5.5rem);
-  font-weight:800;letter-spacing:.1em;color:#fff;
-  text-shadow:0 0 60px rgba(0,240,224,0.95),0 0 120px rgba(0,240,224,0.4);
-  animation:wLogoIn 2s ease forwards;
+  font-family:'Syne',sans-serif;font-size:clamp(2.8rem,11vw,7rem);
+  font-weight:800;letter-spacing:.14em;color:#fff;
+  text-align:center;
+  text-shadow:
+    0 0 30px rgba(0,240,224,1),
+    0 0 80px rgba(0,240,224,0.8),
+    0 0 160px rgba(0,240,224,0.4),
+    0 0 300px rgba(0,240,224,0.15);
+  animation:wLogoIn 1.5s ease forwards;
 }
 @keyframes wLogoIn{
   0%{opacity:0;letter-spacing:.35em;filter:blur(8px);}
@@ -230,11 +238,11 @@ body{overflow:hidden;}
     min-height:0 !important;
   }
 
-  /* Make robot 20% bigger on mobile */
+  /* Robot SMALLER on mobile — prevent overlap with choice panels */
   .robot-wrap{
-    transform:scale(1.2) !important;
+    transform:scale(0.72) !important;
     transform-origin:center top !important;
-    margin-bottom:1rem;
+    margin-bottom:-1.5rem; /* compensate for scale whitespace */
   }
 
   /* Choice panels: full width, side by side, compact */
@@ -638,6 +646,7 @@ body{overflow:hidden;}
 </div>
 
 <!-- Load starfield first (isolated), then main script -->
+<script src="starfield.js"></script>
 <script src="script.js"></script>
 <script>
 'use strict';

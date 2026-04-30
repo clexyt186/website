@@ -1,233 +1,230 @@
-/* ═══════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    CLEXYT — starfield.js
-   Isolated star background. Magnetic pull, motion trails,
-   gyroscope, burst on tap. Nothing else depends on this.
-   ═══════════════════════════════════════════════════════ */
-'use strict';
-
+   Stars travel toward cursor / touch. Attraction-based, not parallax.
+   Based on user's background.html concept, adapted to CLEXYT theme.
+   ═══════════════════════════════════════════════════════════════ */
 (function () {
+
   const canvas = document.getElementById('starfield');
   if (!canvas) return;
+  const ctx = canvas.getContext('2d');
 
-  const ctx   = canvas.getContext('2d');
-  const isMob = ('ontouchstart' in window);
+  /* ── CONFIG ─────────────────────────────────────────────────── */
+  const STAR_COUNT        = 210;    // sparse — space between stars
+  const RESET_DISTANCE    = 14;     // star resets when this close to cursor
+  const ATTRACT_STRENGTH  = 0.013;  // 70% slower than original (was 0.042)
+  const MIN_STEP          = 0.18;   // 70% slower (was 0.85)
+  const MAX_STEP          = 1.55;   // 70% slower (was 5.2)
 
-  let W, H, stars = [], shooters = [];
-  let tx, ty, cx, cy;
+  /* ── STATE ───────────────────────────────────────────────────── */
+  let W = window.innerWidth;
+  let H = window.innerHeight;
+  let stars = [];
+  let targetX = W / 2;
+  let targetY = H / 2;
 
-  /* ── INIT ─────────────────────────────────────────── */
-  function init() {
+  /* ── STAR FACTORY ────────────────────────────────────────────── */
+  function makeStar(w, h) {
+    const brightness = 0.28 + Math.random() * 0.27; // 0.28–0.55 (subtle)
+    const roll = Math.random();
+    let color;
+    if (roll < 0.08) {
+      // Cyan — CLEXYT brand
+      color = `rgba(0,240,224,${brightness})`;
+    } else if (roll < 0.13) {
+      // Amber — CLEXYT accent
+      color = `rgba(240,165,0,${brightness * 0.9})`;
+    } else if (roll < 0.22) {
+      // Cool blue-white
+      color = `rgba(200,220,255,${brightness})`;
+    } else {
+      // Pure white
+      color = `rgba(255,255,255,${brightness})`;
+    }
+    return {
+      x:           Math.random() * w,
+      y:           Math.random() * h,
+      radius:      0.8 + Math.random() * 2.0,   // smaller — 0.8 to 2.8px
+      speedFactor: 0.55 + Math.random() * 0.9,  // personal organic variance
+      brightness,
+      color,
+      // Twinkle state
+      twinkle:     Math.random() * Math.PI * 2,
+      twinkleSpd:  0.008 + Math.random() * 0.018,
+    };
+  }
+
+  function resetStar(s) {
+    const fresh = makeStar(W, H);
+    Object.assign(s, fresh);
+  }
+
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < STAR_COUNT; i++) stars.push(makeStar(W, H));
+  }
+
+  /* ── RESIZE ─────────────────────────────────────────────────── */
+  function resize() {
     W = canvas.width  = window.innerWidth;
     H = canvas.height = window.innerHeight;
-    tx = W / 2; ty = H / 2;
-    cx = W / 2; cy = H / 2;
+    initStars();
+    targetX = W / 2;
+    targetY = H / 2;
   }
 
-  /* ── BUILD STARS ──────────────────────────────────── */
-  function makeStars() {
-    stars = [];
-    const n = Math.min(Math.floor(W * H / 1400), 900);
-    for (let i = 0; i < n; i++) {
-      const roll = Math.random();
-      stars.push({
-        bx:  Math.random() * W,
-        by:  Math.random() * H,
-        r:   Math.random() * 2.1 + 0.35,
-        a:   Math.random() * 0.45 + 0.55,
-        tw:  Math.random() * Math.PI * 2,
-        ts:  0.009 + Math.random() * 0.022,
-        ddx: (Math.random() - 0.5) * 0.055,
-        ddy: (Math.random() - 0.5) * 0.055,
-        d:   Math.random() * 0.88 + 0.12, // depth — higher = stronger parallax
-        hue: roll < 0.07 ? 'c' : roll < 0.13 ? 'a' : 'w',
-        vx:  0, vy: 0                     // velocity for attraction + burst
-      });
+  /* ── UPDATE ─────────────────────────────────────────────────── */
+  function update() {
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+
+      const dx   = targetX - s.x;
+      const dy   = targetY - s.y;
+      const dist = Math.hypot(dx, dy);
+
+      // Reset star that reached the attractor — keeps field populated
+      if (dist < RESET_DISTANCE) {
+        resetStar(s);
+        continue;
+      }
+
+      if (dist < 0.01) { resetStar(s); continue; }
+
+      const dirX = dx / dist;
+      const dirY = dy / dist;
+
+      // Farther stars also feel pull, but step capped at MAX_STEP
+      let step = Math.min(MAX_STEP, MIN_STEP + ATTRACT_STRENGTH * dist);
+      step *= s.speedFactor;
+      step  = Math.min(step, dist); // never overshoot
+
+      s.x += dirX * step;
+      s.y += dirY * step;
+
+      // Twinkle
+      s.twinkle += s.twinkleSpd;
     }
   }
 
-  /* ── SHOOTING STARS ───────────────────────────────── */
-  function addShooter() {
-    shooters.push({
-      x:    Math.random() * W * 0.65,
-      y:    Math.random() * H * 0.35,
-      len:  90 + Math.random() * 160,
-      spd:  13 + Math.random() * 10,
-      ang:  Math.PI / 4 + (Math.random() - 0.5) * 0.55,
-      life: 1,
-      dec:  0.012 + Math.random() * 0.011
-    });
-  }
-  addShooter();
-  setInterval(addShooter, 2200 + Math.random() * 2000);
-
-  /* ── MAIN DRAW LOOP ───────────────────────────────── */
+  /* ── DRAW ────────────────────────────────────────────────────── */
   function draw() {
-    /* Semi-transparent wipe → motion trails */
-    ctx.fillStyle = 'rgba(10,10,16,0.18)';
-    ctx.fillRect(0, 0, W, H);
+    // Fully transparent clear — content sits on top, we are just the background
+    ctx.clearRect(0, 0, W, H);
 
-    /* Lerp cursor target — faster on mobile */
-    const lsp = isMob ? 0.20 : 0.10;
-    cx += (tx - cx) * lsp;
-    cy += (ty - cy) * lsp;
-
-    const ox = cx - W / 2;
-    const oy = cy - H / 2;
-
-    /* ── STARS ── */
     for (const s of stars) {
-      /* Drift */
-      s.bx += s.ddx + s.vx;
-      s.by += s.ddy + s.vy;
-      s.vx *= 0.88;
-      s.vy *= 0.88;
-      s.tw += s.ts;
+      const twinkleMod = 0.75 + 0.25 * Math.sin(s.twinkle);
+      const alpha      = s.brightness * twinkleMod;
 
-      if (s.bx < 0) s.bx = W;
-      if (s.bx > W) s.bx = 0;
-      if (s.by < 0) s.by = H;
-      if (s.by > H) s.by = 0;
-
-      /* Parallax draw position */
-      const px = s.bx + ox * s.d * 0.58;
-      const py = s.by + oy * s.d * 0.58;
-
-      /* Magnetic attraction toward cursor */
-      const ddx  = cx - px;
-      const ddy  = cy - py;
-      const dist = Math.sqrt(ddx * ddx + ddy * ddy);
-      const gr   = Math.min(W, H) * 0.40;
-      if (dist < gr && dist > 0) {
-        const force = (1 - dist / gr) * 0.075;
-        s.vx += ddx * force * 0.05;
-        s.vy += ddy * force * 0.05;
-      }
-
-      /* Final screen position */
-      const fx = s.bx + ox * s.d * 0.58;
-      const fy = s.by + oy * s.d * 0.58;
-
-      const ta        = s.a * (0.5 + 0.5 * Math.sin(s.tw));
-      const proximity = Math.max(0, 1 - dist / (Math.min(W, H) * 0.25));
-      const boost     = 1 + proximity * 2.5;
-      const drawR     = s.r * (1 + proximity * 1.0);
-
+      // Main star circle
       ctx.beginPath();
-      ctx.arc(fx, fy, drawR, 0, Math.PI * 2);
-
-      if (s.hue === 'c') {
-        ctx.fillStyle = `rgba(0,240,224,${Math.min(1, ta * boost)})`;
-        if (s.r > 1.0 || proximity > 0.2) {
-          ctx.shadowColor = 'rgba(0,240,224,0.95)';
-          ctx.shadowBlur  = proximity > 0.2 ? 20 : 8;
-        }
-      } else if (s.hue === 'a') {
-        ctx.fillStyle = `rgba(240,165,0,${Math.min(1, ta * boost)})`;
-        if (s.r > 1.0) { ctx.shadowColor = 'rgba(240,165,0,0.85)'; ctx.shadowBlur = 8; }
-      } else {
-        ctx.fillStyle = `rgba(242,250,255,${Math.min(1, ta * boost * 0.9)})`;
-        if (proximity > 0.28) { ctx.shadowColor = 'rgba(200,240,255,0.7)'; ctx.shadowBlur = 7; }
-      }
+      ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+      ctx.fillStyle = s.color.replace(/[\d.]+\)$/, alpha + ')');
       ctx.fill();
-      ctx.shadowBlur = 0;
+
+      // Inner bright core for larger stars (depth effect)
+      if (s.radius > 1.6) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius * 0.45, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,245,${alpha * 0.65})`;
+        ctx.fill();
+      }
+
+      // Cyan glow for cyan stars near cursor
+      if (s.color.startsWith('rgba(0,240')) {
+        const distToCursor = Math.hypot(targetX - s.x, targetY - s.y);
+        if (distToCursor < 180) {
+          const glowAlpha = (1 - distToCursor / 180) * 0.45;
+          ctx.shadowColor = 'rgba(0,240,224,0.9)';
+          ctx.shadowBlur  = 10;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.radius * 1.1, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(0,240,224,${glowAlpha})`;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
     }
 
-    /* ── SHOOTING STARS ── */
-    for (let i = shooters.length - 1; i >= 0; i--) {
-      const s = shooters[i];
-      s.x += Math.cos(s.ang) * s.spd;
-      s.y += Math.sin(s.ang) * s.spd;
-      s.life -= s.dec;
-      if (s.life <= 0 || s.x > W + 300 || s.y > H + 300) { shooters.splice(i, 1); continue; }
-      const g = ctx.createLinearGradient(
-        s.x - Math.cos(s.ang) * s.len, s.y - Math.sin(s.ang) * s.len, s.x, s.y
-      );
-      g.addColorStop(0, 'rgba(255,255,255,0)');
-      g.addColorStop(1, `rgba(255,255,255,${s.life * 0.92})`);
-      ctx.beginPath();
-      ctx.moveTo(s.x - Math.cos(s.ang) * s.len, s.y - Math.sin(s.ang) * s.len);
-      ctx.lineTo(s.x, s.y);
-      ctx.strokeStyle = g;
-      ctx.lineWidth   = 1.7 * s.life;
-      ctx.stroke();
-    }
-
-    /* ── SOFT CURSOR GLOW ON CANVAS (PC) ── */
-    if (!isMob) {
-      const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 180);
-      cg.addColorStop(0, 'rgba(0,240,224,0.05)');
-      cg.addColorStop(1, 'rgba(0,240,224,0)');
-      ctx.fillStyle = cg;
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    requestAnimationFrame(draw);
+    // Subtle attractor corona at cursor — cyan tint, very faint
+    const cg = ctx.createRadialGradient(targetX, targetY, 0, targetX, targetY, 90);
+    cg.addColorStop(0,   'rgba(0,240,224,0.055)');
+    cg.addColorStop(0.5, 'rgba(0,240,224,0.018)');
+    cg.addColorStop(1,   'rgba(0,240,224,0)');
+    ctx.fillStyle = cg;
+    ctx.fillRect(0, 0, W, H);
   }
 
-  /* ── BURST — tap/click scatters nearby stars ──────── */
-  function burst(bx, by) {
-    stars.forEach(s => {
-      const dx   = s.bx - bx;
-      const dy   = s.by - by;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 240 && dist > 0) {
-        const force = (1 - dist / 240) * 5.5;
-        s.vx += (dx / dist) * force;
-        s.vy += (dy / dist) * force;
-      }
+  /* ── LOOP ────────────────────────────────────────────────────── */
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  /* ── EVENTS ─────────────────────────────────────────────────── */
+  const isMob = 'ontouchstart' in window;
+
+  // PC mouse
+  if (!isMob) {
+    canvas.addEventListener('mousemove', e => {
+      targetX = e.clientX;
+      targetY = e.clientY;
+    });
+    // Return to centre when mouse leaves — elegant drift back
+    canvas.addEventListener('mouseleave', () => {
+      targetX = W / 2;
+      targetY = H / 2;
     });
   }
 
-  /* ── EVENTS ───────────────────────────────────────── */
-  init();
-  makeStars();
-  draw();
-
-  window.addEventListener('resize', () => { init(); makeStars(); }, { passive: true });
-
-  /* PC mouse */
-  window.addEventListener('mousemove', e => { tx = e.clientX; ty = e.clientY; }, { passive: true });
-  window.addEventListener('click', e => {
-    if (!e.target.closest('a,button')) burst(e.clientX, e.clientY);
-  }, { passive: true });
-
-  /* Mobile touch */
-  function onTouch(e) {
-    if (e.touches && e.touches.length > 0) {
-      tx = e.touches[0].clientX;
-      ty = e.touches[0].clientY;
-    }
-  }
-  document.addEventListener('touchstart',  onTouch, { passive: true });
-  document.addEventListener('touchmove',   onTouch, { passive: true });
-  document.addEventListener('touchend', e => {
-    if (e.changedTouches.length > 0) {
-      burst(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+  // Mobile touch — also works on document so nav/content touches work too
+  document.addEventListener('touchstart', e => {
+    if (e.touches.length > 0) {
+      targetX = e.touches[0].clientX;
+      targetY = e.touches[0].clientY;
     }
   }, { passive: true });
 
-  /* ── GYROSCOPE (mobile tilt moves stars) ─────────── */
+  document.addEventListener('touchmove', e => {
+    if (e.touches.length > 0) {
+      targetX = e.touches[0].clientX;
+      targetY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  // Return to centre when finger lifts — stars drift back gently
+  document.addEventListener('touchend', () => {
+    targetX = W / 2;
+    targetY = H / 2;
+  }, { passive: true });
+
+  // Gyroscope for phone tilt
   if (isMob && window.DeviceOrientationEvent) {
     function enableGyro() {
       window.addEventListener('deviceorientation', e => {
         if (e.gamma == null) return;
-        const gx = Math.max(-50, Math.min(50, e.gamma));
+        const gx = Math.max(-45, Math.min(45, e.gamma));
         const gy = Math.max(-40, Math.min(40, (e.beta || 0) - 20));
-        tx = W / 2 + (gx / 50) * (W * 0.55);
-        ty = H / 2 + (gy / 40) * (H * 0.44);
+        targetX = W / 2 + (gx / 45) * (W * 0.42);
+        targetY = H / 2 + (gy / 40) * (H * 0.38);
       }, { passive: true });
     }
     if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-      /* iOS 13+ needs a user gesture to grant permission */
-      document.addEventListener('touchend', function askOnce() {
+      document.addEventListener('touchend', function ask() {
         DeviceOrientationEvent.requestPermission()
           .then(r => { if (r === 'granted') enableGyro(); })
           .catch(() => {});
-        document.removeEventListener('touchend', askOnce);
+        document.removeEventListener('touchend', ask);
       }, { once: true });
     } else {
       enableGyro();
     }
   }
+
+  window.addEventListener('resize', resize, { passive: true });
+
+  /* ── START ───────────────────────────────────────────────────── */
+  resize();
+  loop();
 
 })();
