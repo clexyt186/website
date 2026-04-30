@@ -1,9 +1,10 @@
 'use strict';
 /* ═══════════════════════════════════════════════════════════════
-   CLEXYT — script.js v7
-   Starfield → starfield.js (not here)
-   3D fold transition → REMOVED
-   Warp → covers screen FIRST, then navigates
+   CLEXYT script.js v8
+   - Warp canvas with CLEVITA text
+   - Two-sided cover: departs with warp, arrives with inline cover
+   - Scroll warp removed — only nav clicks trigger warp
+   - Burger, cursor, robot, stats, calendar, SW, offline
    ═══════════════════════════════════════════════════════════════ */
 
 
@@ -18,12 +19,8 @@ try {
       let mx=innerWidth/2,my=innerHeight/2,rx=mx,ry=my;
       (function tick(){ rx+=(mx-rx)*.12; ry+=(my-ry)*.12; dot.style.left=mx+'px'; dot.style.top=my+'px'; ring.style.left=rx+'px'; ring.style.top=ry+'px'; requestAnimationFrame(tick); })();
       window.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;},{passive:true});
-      document.addEventListener('mouseover',e=>{
-        if(e.target.closest('a,button')){ring.style.width='64px';ring.style.height='64px';ring.style.borderColor='rgba(0,240,224,1)';ring.style.boxShadow='0 0 36px rgba(0,240,224,.9)';}
-      },{passive:true});
-      document.addEventListener('mouseout',e=>{
-        if(e.target.closest('a,button')){ring.style.width='48px';ring.style.height='48px';ring.style.borderColor='rgba(0,240,224,.92)';ring.style.boxShadow='0 0 24px rgba(0,240,224,.6)';}
-      },{passive:true});
+      document.addEventListener('mouseover',e=>{ if(e.target.closest('a,button')){ring.style.width='64px';ring.style.height='64px';ring.style.borderColor='rgba(0,240,224,1)';ring.style.boxShadow='0 0 36px rgba(0,240,224,.9)';} },{passive:true});
+      document.addEventListener('mouseout',e=>{ if(e.target.closest('a,button')){ring.style.width='48px';ring.style.height='48px';ring.style.borderColor='rgba(0,240,224,.92)';ring.style.boxShadow='0 0 24px rgba(0,240,224,.6)';} },{passive:true});
       window.addEventListener('mousedown',()=>{dot.style.transform='translate(-50%,-50%) scale(2.5)';ring.style.transform='translate(-50%,-50%) scale(.5)';},{passive:true});
       window.addEventListener('mouseup',()=>{dot.style.transform='';ring.style.transform='';},{passive:true});
     }
@@ -50,135 +47,120 @@ try {
 
 // ── 3. BURGER MENU ───────────────────────────────────────────────
 try {
-  const nav    = document.getElementById('nav');
-  const burger = document.getElementById('burger');
-  const mobNav = document.getElementById('mobNav');
-  if (!burger || !mobNav) throw new Error('missing');
-  burger.style.cssText += ';position:relative!important;z-index:2147483647!important;touch-action:manipulation;';
+  const nav=document.getElementById('nav');
+  const burger=document.getElementById('burger');
+  const mobNav=document.getElementById('mobNav');
+  if (!burger||!mobNav) throw new Error('missing');
+  burger.style.cssText+=';position:relative!important;z-index:2147483647!important;touch-action:manipulation;';
   let _lt=0;
-  function toggle(){
-    const now=Date.now(); if(now-_lt<500)return; _lt=now;
-    const open=mobNav.classList.toggle('open');
-    burger.classList.toggle('active',open);
-    document.body.style.overflow=open?'hidden':'';
-  }
-  function close(){
-    mobNav.classList.remove('open'); burger.classList.remove('active');
-    document.body.style.overflow='';
-  }
+  function toggle(){ const now=Date.now(); if(now-_lt<500)return; _lt=now; const open=mobNav.classList.toggle('open'); burger.classList.toggle('active',open); document.body.style.overflow=open?'hidden':''; }
+  function close(){ mobNav.classList.remove('open'); burger.classList.remove('active'); document.body.style.overflow=''; }
   burger.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggle();});
   burger.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();toggle();},{passive:false});
-  mobNav.querySelectorAll('a').forEach(a=>{
-    a.addEventListener('click',()=>setTimeout(close,80));
-    a.addEventListener('touchend',()=>setTimeout(close,80));
-  });
-  document.addEventListener('touchstart',e=>{
-    if(mobNav.classList.contains('open')&&!burger.contains(e.target)&&!mobNav.contains(e.target))close();
-  },{passive:true});
+  mobNav.querySelectorAll('a').forEach(a=>{ a.addEventListener('click',()=>setTimeout(close,80)); a.addEventListener('touchend',()=>setTimeout(close,80)); });
+  document.addEventListener('touchstart',e=>{ if(mobNav.classList.contains('open')&&!burger.contains(e.target)&&!mobNav.contains(e.target))close(); },{passive:true});
   if(nav) window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>50),{passive:true});
 } catch(e){ console.warn('[CLX] burger',e); }
 
 
-// ── 4. WARP CANVAS ───────────────────────────────────────────────
-// Sits at z-index 99999. Covers screen BEFORE navigation fires.
+// ── 4. WARP ENGINE ───────────────────────────────────────────────
+// Full-screen canvas with CLEVITA text. Covers screen BEFORE navigation.
 (function(){
-  const wc = document.createElement('canvas');
+  const wc  = document.createElement('canvas');
+  const txt = document.createElement('div'); // CLEVITA overlay text
+
+  // Canvas — sits above everything
   wc.style.cssText = [
     'position:fixed;inset:0;width:100%;height:100%;',
-    'z-index:99999;pointer-events:none;',
-    'opacity:0;background:#0a0a10;',
-    'transition:none;',
+    'z-index:2147483640;pointer-events:none;',
+    'opacity:0;background:#060609;',
   ].join('');
+
+  // CLEVITA text — centred, glowing
+  txt.style.cssText = [
+    'position:fixed;top:50%;left:50%;z-index:2147483645;',
+    'transform:translate(-50%,-50%);',
+    'font-family:"Syne",sans-serif;font-weight:800;',
+    'font-size:clamp(2.4rem,10vw,6.5rem);letter-spacing:.12em;',
+    'color:#fff;pointer-events:none;opacity:0;transition:opacity .35s;',
+    'text-shadow:0 0 30px rgba(0,240,224,1),0 0 80px rgba(0,240,224,.8),0 0 160px rgba(0,240,224,.4);',
+    'white-space:nowrap;',
+  ].join('');
+  txt.textContent = 'CLEVITA';
+
   document.body.appendChild(wc);
-  const wctx = wc.getContext('2d');
+  document.body.appendChild(txt);
+
+  const ctx2  = wc.getContext('2d');
   let wW,wH,wS=[],wRun=false,wId=null,wFr=0;
 
-  function wInit(){
-    wW=wc.width=innerWidth;
-    wH=wc.height=innerHeight;
-  }
+  function wInit(){ wW=wc.width=innerWidth; wH=wc.height=innerHeight; }
   function wMake(){
     wS=[];
-    for(let i=0;i<240;i++) wS.push({
+    for(let i=0;i<260;i++) wS.push({
       x:(Math.random()-.5)*2, y:(Math.random()-.5)*2,
-      z:Math.random()*0.9+0.1, pz:0
+      z:Math.random()*.9+.1,  pz:0
     });
   }
   function wDraw(){
     if(!wRun)return;
     wFr++;
-    const spd=Math.min(0.028+wFr*.0045,.11);
-    wctx.fillStyle='rgba(10,10,16,0.32)';
-    wctx.fillRect(0,0,wW,wH);
-    const cx2=wW/2, cy2=wH/2;
+    const spd=Math.min(.025+wFr*.004,.10);
+    ctx2.fillStyle='rgba(6,6,9,0.30)';
+    ctx2.fillRect(0,0,wW,wH);
+    const cx2=wW/2,cy2=wH/2;
     wS.forEach(s=>{
       s.pz=s.z; s.z-=spd;
       if(s.z<=0){s.z=1;s.pz=1;s.x=(Math.random()-.5)*2;s.y=(Math.random()-.5)*2;}
       const sx=(s.x/s.z)*wW*.55+cx2, sy=(s.y/s.z)*wH*.55+cy2;
       const px=(s.x/s.pz)*wW*.55+cx2, py=(s.y/s.pz)*wH*.55+cy2;
-      const g=1-s.z, al=Math.min(1,g*1.6), sz=Math.max(0,g*3.2);
-      wctx.beginPath(); wctx.moveTo(px,py); wctx.lineTo(sx,sy);
-      wctx.strokeStyle=`rgba(${Math.floor(80+g*165)},${Math.floor(210+g*44)},255,${al})`;
-      wctx.lineWidth=sz; wctx.stroke();
+      const g=1-s.z,al=Math.min(1,g*1.6),sz=Math.max(0,g*3.4);
+      ctx2.beginPath(); ctx2.moveTo(px,py); ctx2.lineTo(sx,sy);
+      ctx2.strokeStyle=`rgba(${Math.floor(60+g*180)},${Math.floor(200+g*55)},255,${al})`;
+      ctx2.lineWidth=sz; ctx2.stroke();
     });
     wId=requestAnimationFrame(wDraw);
   }
 
-  // Called with duration (ms). Canvas fades in INSTANTLY, warp plays, THEN page navigates.
-  window.__clxWarp = function(ms, onComplete) {
+  // Public: play warp for `ms` milliseconds, show CLEVITA, then call onDone
+  // onDone fires near the END of the warp (just before fade-out) — perfect moment to navigate
+  window.__clxWarp = function(ms, onDone){
     if(wRun) return;
-    ms = ms || 900;
+    ms = ms || 1500;
     wInit(); wMake(); wFr=0; wRun=true;
-    // Instant full opacity — no fade-in delay
+
+    // Instantly cover screen — no fade-in delay
     wc.style.transition='none';
     wc.style.opacity='1';
     wDraw();
+
+    // Show CLEVITA after 200ms (stars already streaming)
+    setTimeout(()=>{ txt.style.opacity='1'; }, 200);
+
+    // Fire onDone at 85% through so page can start loading under cover
     setTimeout(()=>{
-      if(onComplete) onComplete(); // navigate NOW while warp still showing
-      setTimeout(()=>{
-        wRun=false; cancelAnimationFrame(wId);
-        wc.style.transition='opacity .35s';
-        wc.style.opacity='0';
-        setTimeout(()=>{ wctx.clearRect(0,0,wW,wH); },380);
-      }, 400); // fade out warp after new page has loaded
-    }, ms - 80);
+      if(onDone) onDone();
+    }, Math.floor(ms * 0.85));
+
+    // Fade out warp after full duration
+    setTimeout(()=>{
+      txt.style.opacity='0';
+      wRun=false; cancelAnimationFrame(wId);
+      wc.style.transition='opacity .45s cubic-bezier(.4,0,.2,1)';
+      wc.style.opacity='0';
+      setTimeout(()=>{ ctx2.clearRect(0,0,wW,wH); },500);
+    }, ms);
   };
 
   wInit();
-
-  // ── ARRIVAL COVER — runs on every page load ──
-  // If we arrived via warp, the screen is already dark on the old page.
-  // We need to keep it dark on the new page until it's ready, then reveal.
-  (function(){
-    let arriving = false;
-    try{ arriving = sessionStorage.getItem('clxArriving') === '1'; }catch(e){}
-    if(!arriving) return;
-    try{ sessionStorage.removeItem('clxArriving'); }catch(e){}
-
-    // Cover immediately with same dark colour — no flash
-    const cover = document.createElement('div');
-    cover.style.cssText = [
-      'position:fixed;inset:0;z-index:99998;',
-      'background:#0a0a10;',
-      'pointer-events:none;',
-      'opacity:1;',
-      'transition:opacity 0.55s cubic-bezier(0.4,0,0.2,1);',
-    ].join('');
-    document.body.appendChild(cover);
-
-    // Reveal once page is painted
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      cover.style.opacity = '0';
-      setTimeout(()=>cover.remove(), 620);
-    }));
-  })();
 })();
 
 
-// ── 5. PAGE NAVIGATION WITH WARP ─────────────────────────────────
+// ── 5. PAGE NAVIGATION — warp first, navigate at 85% through ─────
 try {
   let _navLock=false;
-  document.addEventListener('click', function(e){
+
+  document.addEventListener('click',function(e){
     const a=e.target.closest('a[href]');
     if(!a) return;
     if(e.target.closest('#burger')) return;
@@ -193,14 +175,14 @@ try {
     e.preventDefault();
     _navLock=true;
 
-    // Warp fires, THEN navigate. Page never seen before warp.
+    // Flag for arriving page — it will immediately cover itself
+    try{ sessionStorage.setItem('clxArriving','1'); }catch(err){}
+
+    // Warp plays for 1.5s. At 85% (≈1.275s) the page navigates.
+    // The arriving page sees clxArriving flag and covers instantly.
     if(typeof window.__clxWarp==='function'){
-      window.__clxWarp(850, ()=>{
-        try{ sessionStorage.setItem('clxArriving','1'); }catch(e){}
-        window.location.href=href;
-      });
+      window.__clxWarp(1500, ()=>{ window.location.href=href; });
     } else {
-      try{ sessionStorage.setItem('clxArriving','1'); }catch(e){}
       window.location.href=href;
     }
   }, true);
@@ -208,6 +190,7 @@ try {
 
 
 // ── 6. DATA-SCROLL NAV (single-page anchor links) ────────────────
+// No warp on scroll — just smooth scroll. Warp only for real page navigation.
 try {
   document.querySelectorAll('[data-scroll]').forEach(el=>{
     el.addEventListener('click',function(e){
@@ -223,29 +206,7 @@ try {
 } catch(e){ console.warn('[CLX] scroll-nav',e); }
 
 
-// ── 7. SCROLL-SNAP SECTION WARP (index.html only) ─────────────────
-try {
-  const sc=document.getElementById('siteScroll');
-  if(sc){
-    let lastIdx=-1, snapT, lastWarpT=0;
-    sc.addEventListener('scroll',()=>{
-      clearTimeout(snapT);
-      snapT=setTimeout(()=>{
-        const idx=Math.round(sc.scrollTop/sc.clientHeight);
-        const now=Date.now();
-        if(idx!==lastIdx && now-lastWarpT>1500){
-          lastIdx=idx; lastWarpT=now;
-          if(typeof window.__clxWarp==='function') window.__clxWarp(500);
-        } else {
-          lastIdx=idx;
-        }
-      },160);
-    },{passive:true});
-  }
-} catch(e){ console.warn('[CLX] scroll-warp',e); }
-
-
-// ── 8. ROBOT HEAD TRACKING ───────────────────────────────────────
+// ── 7. ROBOT HEAD TRACKING ───────────────────────────────────────
 try {
   const head=document.getElementById('rbHead');
   if(head){
@@ -272,7 +233,7 @@ try {
 } catch(e){ console.warn('[CLX] robot',e); }
 
 
-// ── 9. STATS COUNTER ─────────────────────────────────────────────
+// ── 8. STATS COUNTER ─────────────────────────────────────────────
 try {
   const nums=document.querySelectorAll('.stat-n');
   if(nums.length){
@@ -288,14 +249,14 @@ try {
 } catch(e){ console.warn('[CLX] stats',e); }
 
 
-// ── 10. NOTIFICATIONS ────────────────────────────────────────────
+// ── 9. NOTIFICATIONS ─────────────────────────────────────────────
 function showNotif(msg,type){
   try{const n=document.createElement('div');n.className='notif '+(type||'success');n.textContent=msg;document.body.appendChild(n);setTimeout(()=>n.classList.add('show'),10);setTimeout(()=>{n.classList.remove('show');setTimeout(()=>n.remove(),400);},3200);}catch(e){}
 }
 window.showNotif=showNotif;
 
 
-// ── 11. ICS CALENDAR ─────────────────────────────────────────────
+// ── 10. ICS CALENDAR ─────────────────────────────────────────────
 async function loadICSCalendar(){try{const r=await fetch('calendar/merged_busy.ics?v='+Date.now());if(!r.ok)return[];return parseICS(await r.text());}catch(e){return[];}}
 function parseICS(t){const ev=[];const u=t.replace(/\r\n[ \t]/g,'').replace(/\r\n/g,'\n');u.split('BEGIN:VEVENT').slice(1).forEach(b=>{const sm=b.match(/DTSTART(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);const em=b.match(/DTEND(?:;[^:]*)?:(\d{8}T\d{6})(Z?)/);if(!sm)return;ev.push({start:pID(sm[1],sm[2]==='Z'),end:em?pID(em[1],em[2]==='Z'):null});});return ev;}
 function pID(s,u){const y=+s.substr(0,4),mo=+s.substr(4,2)-1,d=+s.substr(6,2),h=+s.substr(9,2),mi=+s.substr(11,2);if(u){const x=new Date(Date.UTC(y,mo,d,h,mi));x.setHours(x.getHours()+2);return x;}return new Date(y,mo,d,h,mi);}
@@ -303,14 +264,14 @@ function getBookedHoursForDate(events,ds){const[tY,tM,tD]=ds.split('-').map((v,i
 window.loadICSCalendar=loadICSCalendar; window.getBookedHoursForDate=getBookedHoursForDate;
 
 
-// ── 12. SERVICE WORKER ───────────────────────────────────────────
+// ── 11. SERVICE WORKER ───────────────────────────────────────────
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
 
 
-// ── 13. OFFLINE BANNER ───────────────────────────────────────────
+// ── 12. OFFLINE BANNER ───────────────────────────────────────────
 try{
   let _b=null;
-  function mkB(){const b=document.createElement('div');b.style.cssText='position:fixed;bottom:1.2rem;left:1.2rem;z-index:9990;max-width:290px;background:rgba(10,10,16,.97);border:1px solid rgba(0,240,224,.2);border-radius:4px;padding:.7rem 1rem;display:flex;align-items:center;gap:.65rem;font-family:"Space Mono",monospace;font-size:.68rem;letter-spacing:.05em;color:rgba(255,255,255,.4);transform:translateY(140%);transition:transform .4s;';b.innerHTML='<span style="color:rgba(240,165,0,.8);font-size:.95rem">◎</span><span>No signal. <a href="games.html" style="color:rgba(0,240,224,.75);text-decoration:none">Play a game?</a></span><button style="background:none;border:none;color:rgba(255,255,255,.2);cursor:pointer;font-size:.85rem;padding:0;margin-left:auto" aria-label="close">✕</button>';b.querySelector('button').addEventListener('click',()=>b.style.transform='translateY(140%)');document.body.appendChild(b);return b;}
+  function mkB(){const b=document.createElement('div');b.style.cssText='position:fixed;bottom:1.2rem;left:1.2rem;z-index:9990;max-width:290px;background:rgba(6,6,9,.97);border:1px solid rgba(0,240,224,.2);border-radius:4px;padding:.7rem 1rem;display:flex;align-items:center;gap:.65rem;font-family:"Space Mono",monospace;font-size:.68rem;letter-spacing:.05em;color:rgba(255,255,255,.4);transform:translateY(140%);transition:transform .4s;';b.innerHTML='<span style="color:rgba(240,165,0,.8);font-size:.95rem">◎</span><span>No signal. <a href="games.html" style="color:rgba(0,240,224,.75);text-decoration:none">Play a game?</a></span><button style="background:none;border:none;color:rgba(255,255,255,.2);cursor:pointer;font-size:.85rem;padding:0;margin-left:auto" aria-label="close">✕</button>';b.querySelector('button').addEventListener('click',()=>b.style.transform='translateY(140%)');document.body.appendChild(b);return b;}
   function showB(){if(!_b)_b=mkB();setTimeout(()=>_b.style.transform='translateY(0)',50);}
   function hideB(){if(_b)_b.style.transform='translateY(140%)';}
   window.addEventListener('offline',showB);window.addEventListener('online',hideB);
@@ -318,7 +279,7 @@ try{
 }catch(e){console.warn('[CLX] offline',e);}
 
 
-// ── 14. PINCH HINTS ──────────────────────────────────────────────
+// ── 13. PINCH HINTS ──────────────────────────────────────────────
 try{
   document.querySelectorAll('.pinch-hint').forEach(h=>{
     setTimeout(()=>{h.style.transition='opacity .5s';h.style.opacity='0';setTimeout(()=>h.style.display='none',500);},4000);

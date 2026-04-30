@@ -1,6 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- ARRIVAL COVER — must be first, runs before any paint -->
+  <script>
+  (function(){
+    try{
+      if(sessionStorage.getItem('clxArriving')!=='1')return;
+      sessionStorage.removeItem('clxArriving');
+      // Set html dark immediately (runs before CSS loads)
+      document.documentElement.style.cssText='background:#060609;';
+      // Inject cover style into head right now
+      var st=document.createElement('style');
+      st.textContent='body{opacity:0!important;}';
+      st.id='clxCoverSt';
+      document.head.appendChild(st);
+      // Remove once fonts+CSS settle, then fade in
+      window.addEventListener('load',function(){
+        setTimeout(function(){
+          var el=document.getElementById('clxCoverSt');
+          if(el){
+            el.textContent='body{opacity:1;transition:opacity .55s cubic-bezier(.4,0,.2,1);}';
+          }
+        },60);
+      });
+    }catch(e){}
+  })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <meta name="color-scheme" content="dark">
@@ -75,6 +100,16 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
   scroll-snap-stop:always;
   overflow:hidden;
   display:flex;flex-direction:column;
+}
+/* Scroll blur — panels entering/leaving get blur, fully visible panels are clear */
+.fold-face{
+  transition:filter .45s cubic-bezier(.4,0,.2,1);
+}
+.panel-entering > .fold-face{
+  filter:blur(5px) brightness(0.65);
+}
+.panel-visible > .fold-face{
+  filter:none;
 }
 
 /* ── FOLD CREASE ── */
@@ -668,7 +703,7 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
 <script>
 'use strict';
 
-/* ══ WARP INTRO ════════════════════════════════════════════ */
+/* ══ WARP INTRO — 3 seconds, dramatic, CLEVITA + WELCOME ══ */
 (function(){
   const intro=document.getElementById('warpIntro');
   const wc=document.getElementById('warpBg');
@@ -701,17 +736,64 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
   wInit();wMake();wDraw();
   window.addEventListener('resize',wInit,{passive:true});
 
+  // At 2.0s show WELCOME under CLEVITA
+  setTimeout(()=>{
+    const wl = document.getElementById('warpLogo');
+    const ws = document.getElementById('warpSub');
+    if(ws){
+      ws.style.opacity='0';
+      ws.style.transition='opacity .4s';
+      ws.textContent='WELCOME';
+      setTimeout(()=>{ ws.style.opacity='1'; },50);
+    }
+  },2000);
+
+  // At 3.0s fade out and reveal site
   setTimeout(()=>{
     running=false;
     intro.classList.add('fade');
     setTimeout(()=>{
       intro.classList.add('gone');
       try{sessionStorage.setItem('warpSeen','1');}catch(e){}
-    },800);
-  },1000);
+    },850);
+  },3000);
 })();
 
-/* 3D fold removed */
+/* ══ PANEL BLUR ON SCROLL ════════════════════════════════ */
+(function(){
+  const sc = document.getElementById('siteScroll');
+  const panels = document.querySelectorAll('.panel');
+  if(!sc || !panels.length) return;
+
+  // Mark all panels as visible initially so nothing is blurred at load
+  panels.forEach(p => p.classList.add('panel-visible'));
+
+  // Observe each panel — blur while partially entering, clear when fully in
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const p = entry.target;
+      const r = entry.intersectionRatio;
+
+      if (r >= 0.88) {
+        // Fully in view — crystal clear
+        p.classList.remove('panel-entering');
+        p.classList.add('panel-visible');
+      } else if (r > 0.04 && r < 0.88) {
+        // Partially visible — blur while scrolling past
+        p.classList.remove('panel-visible');
+        p.classList.add('panel-entering');
+      } else {
+        // Out of view — clear classes, no style applied
+        p.classList.remove('panel-entering', 'panel-visible');
+      }
+    });
+  }, {
+    root: sc,
+    threshold: Array.from({length: 21}, (_, i) => i * 0.05) // 0, 0.05, 0.10 ... 1.0
+  });
+
+  panels.forEach(p => obs.observe(p));
+})();
 
 /* ══ PORTFOLIO GALLERY ════════════════════════════════════ */
 (function(){
