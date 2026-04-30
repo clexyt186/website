@@ -100,9 +100,6 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
 /* ── FOLD FACE (3D angle on scroll) ── */
 .fold-face{
   flex:1;display:flex;flex-direction:column;
-  transform-origin:top center;
-  transform:perspective(1200px) rotateX(var(--rx,0deg));
-  will-change:transform;backface-visibility:hidden;
 }
 
 /* ── HOME HERO (full height) ── */
@@ -238,11 +235,12 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
     min-height:0 !important;
   }
 
-  /* Robot SMALLER on mobile — prevent overlap with choice panels */
+  /* Robot 40% smaller on mobile — no overlap */
   .robot-wrap{
-    transform:scale(0.72) !important;
+    transform:scale(0.58) !important;
     transform-origin:center top !important;
-    margin-bottom:-1.5rem; /* compensate for scale whitespace */
+    margin-top:-1.2rem !important;
+    margin-bottom:-3.5rem !important;
   }
 
   /* Choice panels: full width, side by side, compact */
@@ -694,27 +692,7 @@ body.warp-done .panel,.warp-done #nav{opacity:1;}
   },1000);
 })();
 
-/* ══ SCROLL-DRIVEN 3D FOLD ════════════════════════════════ */
-(function(){
-  const sc=document.getElementById('siteScroll');
-  const panels=document.querySelectorAll('.panel');
-  if(!sc||!panels.length)return;
-  function ease(t){return 1-(1-t)*(1-t);}
-  function update(){
-    const sy=sc.scrollTop,vh=sc.clientHeight;
-    panels.forEach((p,i)=>{
-      if(i===0)return;
-      const face=p.querySelector('.fold-face');
-      if(!face)return;
-      const raw=(sy-(p.offsetTop-vh))/(vh*0.88);
-      const prog=Math.max(0,Math.min(1,raw));
-      face.style.setProperty('--rx',(1-ease(prog))*75+'deg');
-    });
-  }
-  sc.addEventListener('scroll',update,{passive:true});
-  update();
-  window.addEventListener('resize',update,{passive:true});
-})();
+/* 3D fold removed */
 
 /* ══ PORTFOLIO GALLERY ════════════════════════════════════ */
 (function(){
