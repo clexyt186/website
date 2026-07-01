@@ -205,6 +205,7 @@
   font-family: var(--font-m); font-size: .64rem; color: var(--muted);
   line-height: 1.6; margin-top: 1rem; opacity: .85;
 }
+.consulting-page .qt-disclaimer strong { color: var(--cyan); }
 .consulting-page .qt-book {
   display: inline-flex; align-items: center; gap: .6rem; margin-top: 1.3rem;
   padding: .8rem 1.8rem; background: none; border: 1px solid rgba(0,240,224,.35);
@@ -232,6 +233,44 @@
 .consulting-page .flow-step p {
   font-family: var(--font-m); font-size: .68rem; color: var(--muted); line-height: 1.6;
 }
+
+/* ── payment & terms box (mirrors photography booking page) ── */
+.consulting-page .pay-section { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem 0; }
+.consulting-page .pay-box {
+  position: relative; z-index: 2;
+  background: var(--card); border: 1px solid var(--border);
+  border-left: 2px solid var(--cyan); border-radius: 6px; padding: 2rem;
+  margin-top: 1.5rem;
+}
+.consulting-page .pay-box h4 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color:#fff; }
+.consulting-page .pay-terms { display: flex; flex-direction: column; gap: .7rem; margin-bottom: 1.6rem; }
+.consulting-page .pay-term {
+  font-size: .84rem; color: rgba(255,255,255,0.72); line-height: 1.6;
+  padding-left: 1.1rem; position: relative;
+}
+.consulting-page .pay-term::before { content: '—'; position: absolute; left: 0; color: var(--cyan); }
+.consulting-page .pay-term strong { color: var(--cyan); font-weight: 700; }
+.consulting-page .bank-box {
+  background: rgba(16,16,26,0.88); border: 1px solid rgba(0,240,224,0.15);
+  border-radius: 3px; padding: 1.5rem;
+}
+.consulting-page .bank-box h5 {
+  font-family: var(--font-m); font-size: .7rem; letter-spacing: .14em;
+  color: var(--muted); margin-bottom: 1rem;
+}
+.consulting-page .bank-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: .9rem;
+}
+.consulting-page .bank-label {
+  font-family: var(--font-m); font-size: .6rem; color: var(--muted);
+  margin-bottom: .2rem; letter-spacing: .08em;
+}
+.consulting-page .bank-val { font-family: var(--font-m); font-size: .82rem; color: var(--cyan); }
+.consulting-page .pay-note {
+  font-family: var(--font-m); font-size: .68rem; color: rgba(255,255,255,0.6);
+  line-height: 1.7; margin-top: 1.2rem;
+}
+.consulting-page .pay-note strong { color: var(--text); }
 
 /* ── R&D teaser ── */
 .consulting-page .rnd-section { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem 0; }
@@ -307,6 +346,7 @@
     <a href="#services">Agronomy</a>
     <a href="#data">Apps &amp; Data</a>
     <a href="#flow">How It Works</a>
+    <a href="#payment">Payment</a>
     <a href="#rnd">Drone / R&amp;D</a>
     <a href="#enquire">Enquire</a>
   </div>
@@ -423,7 +463,7 @@
       <span class="qt-total-label">ESTIMATED TOTAL</span>
       <span class="qt-total-val" id="qtTotal">R1 700</span>
     </div>
-    <p class="qt-disclaimer">Estimate only. The number of composites depends on how variable your land actually is on assessment — a uniform field usually needs fewer, variable land needs more so differences aren't averaged away. Travel may be added for distant sites. Full lab reports are delivered ~10–14 working days after sampling.</p>
+    <p class="qt-disclaimer">Estimate only. The number of composites depends on how variable your land actually is on assessment — a uniform field usually needs fewer, variable land needs more so differences aren't averaged away. Travel may be added for distant sites. Full lab reports are delivered ~10–14 working days after sampling. A <strong>50% deposit confirms the booking</strong> (balance on report delivery) — see Payment below.</p>
     <button type="button" class="qt-book" onclick="submitSoilQuote()">
       Request this soil test
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -556,6 +596,34 @@
     <div class="flow-step"><div class="fs-num">03</div><h5>Sampling</h5><p>Composite sampling by proper method, with on-site rapid readings where applicable.</p></div>
     <div class="flow-step"><div class="fs-num">04</div><h5>Lab</h5><p>Full analysis submitted to an accredited laboratory for confirmed results.</p></div>
     <div class="flow-step"><div class="fs-num">05</div><h5>Report</h5><p>Interpreted, zone-mapped report with recommendations — ~10–14 working days after sampling.</p></div>
+  </div>
+</div>
+
+<!-- ============ PAYMENT & TERMS ============ -->
+<div class="pay-section" id="payment">
+  <div class="page-tag">BOOKING &amp; PAYMENT</div>
+  <div class="pay-box">
+    <h4>How booking and payment works</h4>
+    <div class="pay-terms">
+      <div class="pay-term"><strong>50% deposit confirms your booking.</strong> The deposit secures your slot and covers field and laboratory costs. The balance is due on delivery of your report.</div>
+      <div class="pay-term">Deposit is <strong>non-refundable once samples are submitted to the lab</strong>, as the lab cost is committed at that point.</div>
+      <div class="pay-term">Site visits are scheduled <strong>within a few working days</strong> of a confirmed booking. Full lab reports follow <strong>~10–14 working days</strong> after sampling (lab-dependent). Rapid-only screening can be same-visit.</div>
+      <div class="pay-term">Advisory, app and monitoring work is quoted per project — deposit terms are confirmed with your quote.</div>
+    </div>
+
+    <!-- ============ EDIT BANK DETAILS HERE ============ -->
+    <div class="bank-box">
+      <h5>PAYMENT DETAILS — EFT / BANK TRANSFER</h5>
+      <div class="bank-grid">
+        <div class="bank-item"><div class="bank-label">BANK</div><div class="bank-val">YOUR BANK</div></div>
+        <div class="bank-item"><div class="bank-label">ACCOUNT HOLDER</div><div class="bank-val">CLEVITA </div></div>
+        <div class="bank-item"><div class="bank-label">ACCOUNT NUMBER</div><div class="bank-val">1025 6947 684</div></div>
+        <div class="bank-item"><div class="bank-label">BRANCH CODE</div><div class="bank-val">011545</div></div>
+        <div class="bank-item"><div class="bank-label">REFERENCE</div><div class="bank-val">Your name + service</div></div>
+      </div>
+    </div>
+
+    <div class="pay-note">Pay the deposit via EFT and <strong>WhatsApp proof of payment to 074 295 9835</strong> within 24 hours to confirm your booking. Use your name and service as the payment reference.</div>
   </div>
 </div>
 
