@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- ARRIVAL COVER — runs before any paint, prevents flash -->
+  <script>
+  (function(){
+    try {
+      if (sessionStorage.getItem('clxArriving') !== '1') return;
+      sessionStorage.removeItem('clxArriving');
+      document.documentElement.style.background = '#060609';
+      var s = document.createElement('style');
+      s.id = 'clxCover';
+      s.textContent = 'body{opacity:0!important;transition:none!important}';
+      document.head.appendChild(s);
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var el = document.getElementById('clxCover');
+          if (el) el.textContent = 'body{opacity:1;transition:opacity .55s ease}';
+        }, 80);
+      });
+    } catch(e){}
+  })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Services &amp; Pricing — CLEXYT Agri</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230a0a0f'/><circle cx='50' cy='50' r='20' fill='none' stroke='%2300f3ff' stroke-width='4'/><circle cx='50' cy='50' r='8' fill='%2300f3ff'/></svg>">
+  <link rel="stylesheet" href="style.css">
+
+<!-- =========================================================
+     CONSULTING PAGE — SCOPED STYLES ONLY
+     Everything here is namespaced under .consulting-page so it
+     cannot leak onto photography, booking, contact or index.
+     No edits to style.css or script.js.
+     ========================================================= -->
+<style>
+/* pinch hint (kept identical to other pages) */
+.nav-pinch-hint { display: none; }
+@media (max-width: 768px) {
+  .nav-pinch-hint {
+    display: inline-flex; align-items: center;
+    font-family: "Space Mono", monospace;
+    font-size: .45rem; letter-spacing: .12em;
+    color: rgba(0,240,224,.62);
+    background: rgba(0,240,224,.055);
+    border: 1px solid rgba(0,240,224,.22);
+    border-radius: 20px; padding: .18rem .55rem;
+    white-space: nowrap; margin: 0 auto;
+    animation: navPinchGlow 2.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes navPinchGlow {
+    0%,100% { box-shadow: 0 0 4px rgba(0,240,224,.15); }
+    50%     { box-shadow: 0 0 10px rgba(0,240,224,.45), 0 0 20px rgba(0,240,224,.12); }
+  }
+}
+
+/* ── readability backdrop: a solid-but-see-through wash behind content
+     so text stays legible over the starfield, without hiding the stars ── */
+.consulting-page .page-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;                 /* starfield sits at 0 (inline), content at 2 → wash sits between */
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(10,10,16,0.82) 0%, rgba(10,10,16,0.86) 100%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+/* Make sure every heading and text element renders crisp ABOVE the wash */
+.consulting-page .page-hero,
+.consulting-page .sec-head,
+.consulting-page .cred-strip,
+.consulting-page .subnav { position: relative; z-index: 3; }
+.consulting-page .page-hero h1 { color: #ffffff; }
+.consulting-page .sec-head h2 { color: #ffffff; }
+.consulting-page .page-hero p,
+.consulting-page .sec-head p { color: rgba(255,255,255,0.72); }
+
+/* ── sticky section sub-menu (jump nav) ── */
+.consulting-page .subnav {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 50;
+  background: rgba(10,10,16,0.72);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.consulting-page .subnav-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; gap: .3rem; padding: .55rem 1rem;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.consulting-page .subnav-inner::-webkit-scrollbar { display: none; }
+.consulting-page .subnav a {
+  flex: 0 0 auto;
+  font-family: var(--font-m); font-size: .66rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+  padding: .4rem .85rem; border: 1px solid transparent; border-radius: 20px;
+  white-space: nowrap; transition: color .2s, background .2s, border-color .2s;
+}
+.consulting-page .subnav a:hover {
+  color: var(--cyan); background: rgba(0,240,224,.06); border-color: rgba(0,240,224,.2);
+}
+/* offset anchor targets so sticky bars don't cover section tops */
+.consulting-page .anchor-offset {
+  scroll-margin-top: calc(var(--nav-h) + 58px);
+}
+
+/* ── section heading helper ── */
+.consulting-page .sec-head {
+  max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem 0;
+}
+.consulting-page .sec-head .page-tag { margin-bottom: .8rem; }
+.consulting-page .sec-head h2 {
+  font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800;
+  letter-spacing: -.02em; margin-bottom: .6rem;
+}
+.consulting-page .sec-head p {
+  font-size: .9rem; color: var(--muted); line-height: 1.7; max-width: 640px;
+}
+
+/* ── credibility strip ── */
+.consulting-page .cred-strip {
+  max-width: 1100px; margin: 1.5rem auto 0; padding: 0 2rem;
+  display: flex; flex-wrap: wrap; gap: .6rem;
+}
+.consulting-page .cred-pill {
+  font-family: var(--font-m); font-size: .62rem; letter-spacing: .08em;
+  padding: .35rem .8rem; border: 1px solid rgba(0,240,224,.2);
+  border-radius: 20px; color: rgba(0,240,224,.75);
+  background: rgba(0,240,224,.04);
+}
+
+/* ── composite explainer box ── */
+.consulting-page .composite-box {
+  position: relative; z-index: 2;
+  max-width: 1100px; margin: 2rem auto 0; padding: 1.8rem 2rem;
+  background: var(--card); border: 1px solid var(--border);
+  border-left: 2px solid var(--cyan); border-radius: 4px;
+}
+.consulting-page .composite-box h4 {
+  font-size: .95rem; font-weight: 700; margin-bottom: .6rem; color: var(--text);
+}
+.consulting-page .composite-box p {
+  font-size: .82rem; color: var(--muted); line-height: 1.7; margin-bottom: .5rem;
+}
+.consulting-page .composite-box p:last-child { margin-bottom: 0; }
+.consulting-page .composite-box strong { color: var(--cyan); font-weight: 700; }
+
+/* ── quote generator ── */
+.consulting-page .quote-tool {
+  position: relative; z-index: 2;
+  max-width: 1100px; margin: 2rem auto 0; padding: 2rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+}
+.consulting-page .quote-tool h4 {
+  font-size: 1rem; font-weight: 700; margin-bottom: .3rem;
+}
+.consulting-page .quote-tool .qt-sub {
+  font-family: var(--font-m); font-size: .7rem; color: var(--muted);
+  letter-spacing: .04em; margin-bottom: 1.5rem;
+}
+.consulting-page .qt-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;
+}
+.consulting-page .qt-field { display: flex; flex-direction: column; gap: .4rem; }
+.consulting-page .qt-field label {
+  font-family: var(--font-m); font-size: .68rem; letter-spacing: .1em; color: var(--muted);
+}
+.consulting-page .qt-field input,
+.consulting-page .qt-field select {
+  width: 100%; padding: .75rem .9rem; background: var(--ink);
+  border: 1px solid var(--border); border-radius: 3px; color: var(--text);
+  font-family: var(--font-h); font-size: .9rem; outline: none;
+  transition: border-color .2s; cursor: none;
+}
+.consulting-page .qt-field input:focus,
+.consulting-page .qt-field select:focus { border-color: rgba(0,240,224,.4); }
+.consulting-page .qt-field select option { background: var(--ink); }
+
+.consulting-page .qt-result {
+  border-top: 1px solid var(--border); padding-top: 1.3rem; margin-top: .4rem;
+}
+.consulting-page .qt-line {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--font-m); font-size: .78rem; color: var(--muted);
+  margin-bottom: .5rem;
+}
+.consulting-page .qt-line span:last-child { color: var(--text); }
+.consulting-page .qt-total {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-top: .8rem; padding-top: .8rem; border-top: 1px dashed var(--border);
+}
+.consulting-page .qt-total .qt-total-label {
+  font-family: var(--font-m); font-size: .72rem; letter-spacing: .1em; color: var(--muted);
+}
+.consulting-page .qt-total .qt-total-val {
+  font-family: var(--font-m); font-size: 1.7rem; font-weight: 700; color: var(--cyan);
+}
+.consulting-page .qt-disclaimer {
+  font-family: var(--font-m); font-size: .64rem; color: var(--muted);
+  line-height: 1.6; margin-top: 1rem; opacity: .85;
+}
+.consulting-page .qt-book {
+  display: inline-flex; align-items: center; gap: .6rem; margin-top: 1.3rem;
+  padding: .8rem 1.8rem; background: none; border: 1px solid rgba(0,240,224,.35);
+  border-radius: 3px; color: var(--cyan); font-family: var(--font-m);
+  font-size: .78rem; letter-spacing: .1em; cursor: none;
+  transition: background .2s, border-color .2s;
+}
+.consulting-page .qt-book:hover { background: rgba(0,240,224,.07); border-color: var(--cyan); }
+
+/* ── "how it works" flow ── */
+.consulting-page .flow-section { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem 0; }
+.consulting-page .flow-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 1.5px; background: var(--border); margin-top: 1.5rem;
+}
+.consulting-page .flow-step {
+  position: relative; z-index: 2;
+  background: var(--surface); padding: 1.6rem 1.4rem;
+}
+.consulting-page .flow-step .fs-num {
+  font-family: var(--font-m); font-size: .7rem; letter-spacing: .12em;
+  color: var(--cyan); margin-bottom: .6rem;
+}
+.consulting-page .flow-step h5 { font-size: .9rem; font-weight: 700; margin-bottom: .35rem; }
+.consulting-page .flow-step p {
+  font-family: var(--font-m); font-size: .68rem; color: var(--muted); line-height: 1.6;
+}
+
+/* ── R&D teaser ── */
+.consulting-page .rnd-section { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem 0; }
+.consulting-page .rnd-box {
+  position: relative; z-index: 2;
+  background: linear-gradient(135deg, rgba(240,165,0,.05), rgba(0,240,224,.04));
+  border: 1px solid var(--border); border-radius: 6px; padding: 2rem;
+}
+.consulting-page .rnd-box .rnd-flag {
+  display: inline-block; font-family: var(--font-m); font-size: .6rem;
+  letter-spacing: .14em; color: var(--amber);
+  border: 1px solid rgba(240,165,0,.3); border-radius: 20px;
+  padding: .25rem .7rem; margin-bottom: 1rem;
+}
+.consulting-page .rnd-box h4 { font-size: 1.05rem; font-weight: 700; margin-bottom: .6rem; }
+.consulting-page .rnd-box > p {
+  font-size: .82rem; color: var(--muted); line-height: 1.7; margin-bottom: 1.2rem; max-width: 640px;
+}
+.consulting-page .rnd-tags { display: flex; flex-wrap: wrap; gap: .5rem; }
+.consulting-page .rnd-tag {
+  font-family: var(--font-m); font-size: .62rem; letter-spacing: .06em;
+  padding: .3rem .7rem; border: 1px solid var(--border);
+  border-radius: 2px; color: var(--muted);
+}
+
+/* ── svc "from" price variant ── */
+.consulting-page .svc-price.from-price { font-size: 1.15rem; }
+.consulting-page .svc-price.from-price .from-word {
+  font-size: .7rem; color: var(--muted); letter-spacing: .1em; margin-right: .35rem;
+}
+
+@media (max-width: 768px) {
+  .consulting-page .qt-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body class="consulting-page">
+
+<div class="c-dot"></div>
+<div class="c-ring"></div>
+<canvas id="starfield" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+<div class="page-backdrop"></div>
+
+<nav id="nav">
+  <a href="index.html" class="nav-logo">CLEXYT<span class="nav-dot"></span></a>
+  <span class="nav-pinch-hint">pinch to zoom</span>
+  <div class="nav-links">
+    <a href="photography.html">Photography</a>
+    <a href="consulting.html" style="color:var(--text)">Consulting</a>
+    <a href="contact.html">Contact</a>
+    <a href="photography.html#gallery">Portfolio</a>
+    <a href="booking.html" class="nav-cta">Book Now</a>
+  </div>
+  <button class="burger" id="burger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mob-nav" id="mobNav">
+  <a href="index.html">Home</a>
+  <a href="photography.html">Photography</a>
+  <a href="consulting.html">Consulting</a>
+  <a href="contact.html">Contact</a>
+  <a href="photography.html#gallery">Portfolio</a>
+  <a href="booking.html">Book Now</a>
+</div>
+
+<!-- Section jump-menu so visitors see the full offering, not just soil -->
+<div class="subnav">
+  <div class="subnav-inner">
+    <a href="consulting.html" style="color:var(--cyan)">&larr; Overview</a>
+    <a href="#soil">Soil Testing</a>
+    <a href="#services">Agronomy</a>
+    <a href="#data">Apps &amp; Data</a>
+    <a href="#flow">How It Works</a>
+    <a href="#rnd">Drone / R&amp;D</a>
+    <a href="#enquire">Enquire</a>
+  </div>
+</div>
+
+<!-- ============ HERO ============ -->
+<div class="page-hero">
+  <div class="mini-robot" style="margin-bottom:1.5rem">
+    <div class="mini-rb-head">
+      <div class="mini-rb-tip"></div>
+      <div style="display:flex;gap:3px"><div class="mini-rb-eye"></div><div class="mini-rb-eye"></div></div>
+    </div>
+    <span style="font-family:var(--font-m);font-size:.65rem;letter-spacing:.1em;color:var(--muted)">CLEXYT AGRI &amp; DATA</span>
+  </div>
+  <div class="page-tag">AGRICULTURAL CONSULTING &amp; DATA SYSTEMS</div>
+  <h1>Soil, data and<br>systems that grow<br>with your operation.</h1>
+  <p>Agricultural consulting built on an honours background in Plant &amp; Soil Sciences — soil analysis, fertilisation and irrigation planning, environmental monitoring, and custom farm data systems. The same automation and data tools are currently running in agriculture and apply anywhere data matters.</p>
+</div>
+
+<div class="cred-strip">
+  <span class="cred-pill">Hons. Plant &amp; Soil Sciences</span>
+  <span class="cred-pill">SANAS-accredited lab analysis</span>
+  <span class="cred-pill">Field-to-report methodology</span>
+  <span class="cred-pill">Based in Pretoria</span>
+</div>
+
+<!-- ============ SOIL TESTING (flagship + quote generator) ============ -->
+<div class="sec-head anchor-offset" id="soil">
+  <div class="page-tag">SOIL TESTING</div>
+  <h2>Soil analysis, priced honestly.</h2>
+  <p>Two tiers depending on how precise you need the numbers. Priced per composite sample — a composite is one representative sample built from many cores across a zone (explained below). Get an instant estimate with the calculator.</p>
+</div>
+
+<!-- Composite explainer -->
+<div class="composite-box">
+  <h4>What is a composite sample?</h4>
+  <p>A single reading from one spot tells you very little — soil varies across a field. So a <strong>composite sample</strong> is built from roughly 15 cores taken across a zone in a W-pattern, blended and mixed into one representative sample that reflects the average condition of that area.</p>
+  <p>A uniform hectare is usually <strong>one composite</strong>. Where land clearly varies — different soil, slope, or history — it's split into zones, each sampled as its own composite so real differences show up rather than being averaged away.</p>
+</div>
+
+<!-- Two tiers as service cards -->
+<div class="services-section" style="padding-top:2rem">
+  <div class="services-grid">
+
+    <div class="svc-card">
+      <div class="svc-badge">RAPID FIELD SCREENING</div>
+      <h3>On-site indicative readings</h3>
+      <p class="svc-desc">Fast on-site profiling with field instruments — good for quick checks and trend monitoring. Indicative readings, not laboratory-precise.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price">R600<span style="font-size:.8rem;color:var(--muted)"> / composite</span></div>
+      <div class="svc-deposit">On-site results · indicative</div>
+      <ul class="svc-features">
+        <li>pH, EC, moisture &amp; temperature</li>
+        <li>Indicative NPK trend</li>
+        <li>Readings given on the visit</li>
+        <li>No lab — screening only</li>
+      </ul>
+      <a class="svc-book" href="#soil-quote">Get an estimate</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">FULL SOIL ANALYSIS</div>
+      <h3>Field sampling + accredited lab</h3>
+      <p class="svc-desc">Field sampling, on-site rapid readings, and accredited SANAS laboratory analysis — with an interpretation report and recommendations.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price">R1700<span style="font-size:.8rem;color:var(--muted)"> / composite</span></div>
+      <div class="svc-deposit">Lab-confirmed · full report</div>
+      <ul class="svc-features">
+        <li>Everything in Rapid Screening</li>
+        <li>Accredited lab NPK, pH &amp; more</li>
+        <li>Interpretation &amp; recommendations</li>
+        <li>Zone-mapped written report</li>
+      </ul>
+      <a class="svc-book" href="#soil-quote">Get an estimate</a>
+    </div>
+
+  </div>
+</div>
+
+<!-- Quote generator -->
+<div class="quote-tool" id="soil-quote">
+  <h4>Soil testing — instant estimate</h4>
+  <div class="qt-sub">Enter your details for a guide price. Final composite count is confirmed after a site assessment.</div>
+
+  <div class="qt-grid">
+    <div class="qt-field">
+      <label>Service tier</label>
+      <select id="qtTier">
+        <option value="600">Rapid Field Screening — R600/composite</option>
+        <option value="1700" selected>Full Soil Analysis — R1700/composite</option>
+      </select>
+    </div>
+    <div class="qt-field">
+      <label>Land size (hectares)</label>
+      <input type="number" id="qtHectares" min="0.5" step="0.5" value="1" placeholder="e.g. 2">
+    </div>
+    <div class="qt-field">
+      <label>Soil uniformity</label>
+      <select id="qtUniform">
+        <option value="uniform" selected>Fairly uniform (one soil / flat)</option>
+        <option value="variable">Variable (mixed soil / slopes / zones)</option>
+      </select>
+    </div>
+    <div class="qt-field">
+      <label>Location / area</label>
+      <input type="text" id="qtLocation" placeholder="Town or region">
+    </div>
+  </div>
+
+  <div class="qt-result">
+    <div class="qt-line"><span>Estimated composites</span><span id="qtComposites">1</span></div>
+    <div class="qt-line"><span>Tier</span><span id="qtTierLabel">Full Soil Analysis</span></div>
+    <div class="qt-total">
+      <span class="qt-total-label">ESTIMATED TOTAL</span>
+      <span class="qt-total-val" id="qtTotal">R1 700</span>
+    </div>
+    <p class="qt-disclaimer">Estimate only. The number of composites depends on how variable your land actually is on assessment — a uniform field usually needs fewer, variable land needs more so differences aren't averaged away. Travel may be added for distant sites. Full lab reports are delivered ~10–14 working days after sampling.</p>
+    <button type="button" class="qt-book" onclick="submitSoilQuote()">
+      Request this soil test
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============ AGRONOMY & ADVISORY ============ -->
+<div class="sec-head anchor-offset" id="services" style="padding-top:3.5rem">
+  <div class="page-tag">AGRONOMY &amp; ADVISORY</div>
+  <h2>Planning and advice, backed by the degree.</h2>
+  <p>Deliverables built on soil and plant science — turning data into decisions. Every advisory job is quoted per site; the "from" figures are starting points, confirmed once I understand your operation.</p>
+</div>
+
+<div class="services-section" style="padding-top:2rem">
+  <div class="services-grid">
+
+    <div class="svc-card">
+      <div class="svc-badge">FERTILISATION PLANNING</div>
+      <h3>Fertiliser programmes</h3>
+      <p class="svc-desc">Soil results turned into a clear fertiliser programme — what to apply, how much, and when — matched to your crop and targets.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price from-price"><span class="from-word">from</span>R900</div>
+      <div class="svc-deposit">Quoted per site</div>
+      <a class="svc-book" href="#enquire">Request a quote</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">IRRIGATION SCHEDULING</div>
+      <h3>Irrigation planning</h3>
+      <p class="svc-desc">Water-efficient irrigation schedules using soil moisture data and crop needs — cutting waste and protecting yield.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price from-price"><span class="from-word">from</span>R1200</div>
+      <div class="svc-deposit">Quoted per site</div>
+      <a class="svc-book" href="#enquire">Request a quote</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">CROP &amp; PLANTING</div>
+      <h3>Crop suitability advice</h3>
+      <p class="svc-desc">What will thrive in your soil, and what to adjust before planting — planting recommendations grounded in your actual soil chemistry.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price from-price"><span class="from-word">from</span>R800</div>
+      <div class="svc-deposit">Quoted per site</div>
+      <a class="svc-book" href="#enquire">Request a quote</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">DATA-LOGGER MONITORING</div>
+      <h3>Sensor install &amp; monitoring</h3>
+      <p class="svc-desc">Soil moisture and environmental data loggers installed, calibrated and monitored — data captured continuously and interpreted, not just recorded.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price from-price"><span class="from-word">from</span>R2000</div>
+      <div class="svc-deposit">Quoted per site</div>
+      <a class="svc-book" href="#enquire">Request a quote</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">ANIMAL HOUSING</div>
+      <h3>Environmental monitoring</h3>
+      <p class="svc-desc">Temperature, humidity, CO₂ and air-quality monitoring for poultry and livestock housing — condition reporting to flag issues early.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price from-price"><span class="from-word">from</span>R2000</div>
+      <div class="svc-deposit">Quoted per site · condition reporting</div>
+      <a class="svc-book" href="#enquire">Request a quote</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">PASTURE</div>
+      <h3>Pasture &amp; grass advice</h3>
+      <p class="svc-desc">Establishment and management advice for pasture and grass production — soil, species and management guidance.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price from-price"><span class="from-word">from</span>R800</div>
+      <div class="svc-deposit">Quoted per site</div>
+      <a class="svc-book" href="#enquire">Request a quote</a>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ AUTOMATION & APPS ============ -->
+<div class="sec-head anchor-offset" id="data" style="padding-top:3.5rem">
+  <div class="page-tag">AUTOMATION &amp; DATA SYSTEMS</div>
+  <h2>Custom farm apps &amp; automated data capture.</h2>
+  <p>Software that captures operational data automatically and turns it into something you can act on — currently deployed in agricultural operations, and built the same way for any data-driven business.</p>
+</div>
+
+<div class="services-section" style="padding-top:2rem">
+  <div class="services-grid">
+
+    <div class="svc-card">
+      <div class="svc-badge">DATA CAPTURE</div>
+      <h3>Automated data systems</h3>
+      <p class="svc-desc">Automated capture pipelines — production, sensor and field data collected without manual entry. Currently running in agriculture; the same architecture applies anywhere.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price from-price"><span class="from-word">from</span>R4000</div>
+      <div class="svc-deposit">Scoped per project</div>
+      <a class="svc-book" href="#enquire">Request a quote</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">CUSTOM APPS</div>
+      <h3>Production &amp; records apps</h3>
+      <p class="svc-desc">Custom apps for production data, yields and records — currently built for farm operations, adaptable to any workflow.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price from-price"><span class="from-word">from</span>R5000</div>
+      <div class="svc-deposit">Scoped per project</div>
+      <a class="svc-book" href="#enquire">Request a quote</a>
+    </div>
+
+    <div class="svc-card">
+      <div class="svc-badge">OPERATIONS</div>
+      <h3>Staff &amp; scheduling systems</h3>
+      <p class="svc-desc">Staff management, task tracking, irrigation schedules and operational dashboards — the running data of your operation, in one place.</p>
+      <!-- ============ EDIT PRICES HERE ============ -->
+      <div class="svc-price from-price"><span class="from-word">from</span>R4500</div>
+      <div class="svc-deposit">Scoped per project</div>
+      <a class="svc-book" href="#enquire">Request a quote</a>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ HOW IT WORKS ============ -->
+<div class="flow-section anchor-offset" id="flow">
+  <div class="page-tag">HOW IT WORKS</div>
+  <div class="flow-grid">
+    <div class="flow-step"><div class="fs-num">01</div><h5>Request</h5><p>Send your details or an estimate through the calculator. I confirm scope and price.</p></div>
+    <div class="flow-step"><div class="fs-num">02</div><h5>Site assessment</h5><p>Site visit scheduled within a few working days to confirm zones and sampling.</p></div>
+    <div class="flow-step"><div class="fs-num">03</div><h5>Sampling</h5><p>Composite sampling by proper method, with on-site rapid readings where applicable.</p></div>
+    <div class="flow-step"><div class="fs-num">04</div><h5>Lab</h5><p>Full analysis submitted to an accredited laboratory for confirmed results.</p></div>
+    <div class="flow-step"><div class="fs-num">05</div><h5>Report</h5><p>Interpreted, zone-mapped report with recommendations — ~10–14 working days after sampling.</p></div>
+  </div>
+</div>
+
+<!-- ============ R&D TEASER ============ -->
+<div class="rnd-section anchor-offset" id="rnd">
+  <div class="rnd-box">
+    <span class="rnd-flag">IN DEVELOPMENT</span>
+    <h4>What we're building</h4>
+    <p>Beyond the services above, CLEXYT is developing automated aerial and sensor-based monitoring — bringing precision-agriculture data collection into the same capture-to-decision pipeline. Pilot enquiries welcome.</p>
+    <div class="rnd-tags">
+      <span class="rnd-tag">Aerial / drone monitoring</span>
+      <span class="rnd-tag">Multispectral / NDVI imaging</span>
+      <span class="rnd-tag">3D field mapping</span>
+      <span class="rnd-tag">Networked sensor fleets</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ENQUIRY FORM ============ -->
+<section class="consult-section anchor-offset" id="enquire" style="margin-top:4rem">
+  <div class="mini-robot" style="margin-bottom:1.5rem">
+    <div class="mini-rb-head">
+      <div class="mini-rb-tip"></div>
+      <div style="display:flex;gap:3px"><div class="mini-rb-eye"></div><div class="mini-rb-eye"></div></div>
+    </div>
+    <span style="font-family:var(--font-m);font-size:.65rem;letter-spacing:.1em;color:var(--muted)">REQUEST A CONSULTATION</span>
+  </div>
+  <h2>Tell me about your operation</h2>
+  <p>For soil testing, use the calculator above. For everything else — advisory, irrigation, data loggers, apps or a pilot — send the details here and I'll come back with a tailored quote.</p>
+
+  <form id="consultForm" onsubmit="submitConsult(event)">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="cName" required placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="cEmail" required placeholder="email@example.com">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Phone / WhatsApp</label>
+        <input type="tel" id="cPhone" placeholder="074 000 0000">
+      </div>
+      <div class="form-group">
+        <label>Service</label>
+        <select id="cService" required>
+          <option value="">Select a service</option>
+          <option value="Soil testing">Soil testing</option>
+          <option value="Fertilisation planning">Fertilisation planning</option>
+          <option value="Irrigation scheduling">Irrigation scheduling</option>
+          <option value="Crop / planting advice">Crop / planting advice</option>
+          <option value="Data-logger monitoring">Data-logger monitoring</option>
+          <option value="Animal housing monitoring">Animal housing monitoring</option>
+          <option value="Pasture advice">Pasture advice</option>
+          <option value="Custom app / data system">Custom app / data system</option>
+          <option value="R&D / pilot">R&amp;D / pilot enquiry</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Location / Area</label>
+        <input type="text" id="cLocation" placeholder="Town or region">
+      </div>
+      <div class="form-group">
+        <label>Land size (if applicable)</label>
+        <input type="text" id="cSize" placeholder="e.g. 2 hectares">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>What do you need?</label>
+      <textarea id="cProject" required placeholder="Describe your operation, what you'd like help with, crop/livestock, and any timeline or constraints..."></textarea>
+    </div>
+    <button type="submit" class="form-submit">
+      Send Request
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </form>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">CLEXYT</div>
+      <p>Agricultural Consulting &amp; Data Systems</p>
+      <p>Pretoria, South Africa</p>
+    </div>
+    <div class="footer-links">
+      <a href="photography.html">Photography</a>
+      <a href="consulting.html">Consulting</a>
+      <a href="booking.html">Book Now</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <div class="footer-contact">
+      <a href="mailto:cletusmulaudi32@gmail.com">cletusmulaudi32@gmail.com</a>
+      <a href="tel:+27742959835">074 295 9835</a>
+      <a href="https://instagram.com/clexyt14" target="_blank">@clexyt14</a>
+    </div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2025 CLEXYT Studio. All rights reserved.</span></div>
+</footer>
+
+<script src="starfield.js"></script>
+<script src="script.js"></script>
+<script>
+/* ================= SOIL QUOTE GENERATOR (self-contained) ================= */
+(function () {
+  var tierEl   = document.getElementById('qtTier');
+  var haEl     = document.getElementById('qtHectares');
+  var uniEl    = document.getElementById('qtUniform');
+  if (!tierEl) return; // guard: only runs on this page
+
+  function fmt(n){ return 'R' + Math.round(n).toLocaleString('en-ZA').replace(/,/g,' '); }
+
+  function estimateComposites() {
+    var ha = parseFloat(haEl.value) || 0;
+    if (ha <= 0) return 0;
+    var perComposite = (uniEl.value === 'variable') ? 2 : 4; // uniform ~1 per 4ha, variable ~1 per 2ha
+    var comps = Math.ceil(ha / perComposite);
+    return Math.max(1, comps);
+  }
+
+  function recalc() {
+    var price = parseInt(tierEl.value, 10);
+    var comps = estimateComposites();
+    var total = price * comps;
+    document.getElementById('qtComposites').textContent = comps;
+    document.getElementById('qtTierLabel').textContent =
+      (price === 600) ? 'Rapid Field Screening' : 'Full Soil Analysis';
+    document.getElementById('qtTotal').textContent = fmt(total);
+  }
+
+  [tierEl, haEl, uniEl].forEach(function(el){
+    el.addEventListener('input', recalc);
+    el.addEventListener('change', recalc);
+  });
+  recalc();
+})();
+
+/* Build the soil-test request and route via WhatsApp + email (matches site pattern) */
+function submitSoilQuote() {
+  var tierSel = document.getElementById('qtTier');
+  var tier    = tierSel.options[tierSel.selectedIndex].text.split('—')[0].trim();
+  var ha      = document.getElementById('qtHectares').value || '?';
+  var uni     = document.getElementById('qtUniform').value;
+  var loc     = document.getElementById('qtLocation').value || '(not given)';
+  var comps   = document.getElementById('qtComposites').textContent;
+  var total   = document.getElementById('qtTotal').textContent;
+
+  var summary =
+    '*CLEXYT Soil Test Request*%0A%0A' +
+    'Tier: ' + tier + '%0A' +
+    'Land size: ' + ha + ' ha%0A' +
+    'Uniformity: ' + uni + '%0A' +
+    'Location: ' + loc + '%0A' +
+    'Est. composites: ' + comps + '%0A' +
+    'Est. total: ' + total + '%0A%0A' +
+    '(Estimate — to be confirmed on site assessment)';
+
+  var waUrl = 'https://wa.me/27742959835?text=' + summary;
+
+  // 1. Email you instantly via Formspree (same endpoint as booking page)
+  try {
+    fetch('https://formspree.io/f/mgoapgqe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _subject: 'Soil Test Request — ' + tier,
+        request_type: 'Soil test (from quote calculator)',
+        tier: tier,
+        land_size: ha + ' ha',
+        uniformity: uni,
+        location: loc,
+        estimated_composites: comps,
+        estimated_total: total,
+        submitted_at: new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg' }),
+        note: 'Estimate only — confirm on site assessment.'
+      })
+    }).catch(function(){});
+  } catch(e){}
+
+  // 2. Open WhatsApp as an instant backup ping
+  if (typeof showNotif === 'function') showNotif('Sending your soil test request...', 'success');
+  setTimeout(function(){ window.open(waUrl, '_blank'); }, 700);
+}
+
+/* General enquiry form — WhatsApp primary + mailto fallback (matches existing site) */
+function submitConsult(e) {
+  e.preventDefault();
+  var name    = document.getElementById('cName').value;
+  var email   = document.getElementById('cEmail').value;
+  var phone   = document.getElementById('cPhone').value;
+  var service = document.getElementById('cService').value;
+  var loc     = document.getElementById('cLocation').value;
+  var size    = document.getElementById('cSize').value;
+  var project = document.getElementById('cProject').value;
+
+  var msg = encodeURIComponent(
+    '*CLEXYT Consulting Request*\n\n' +
+    'Name: ' + name + '\nEmail: ' + email + '\nPhone: ' + phone + '\n' +
+    'Service: ' + service + '\nLocation: ' + loc + '\nLand size: ' + size + '\n\n' +
+    'Details:\n' + project
+  );
+  var waUrl = 'https://wa.me/27742959835?text=' + msg;
+
+  // 1. Email you instantly via Formspree (same endpoint as booking page)
+  try {
+    fetch('https://formspree.io/f/mgoapgqe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _subject: 'Consulting Request — ' + service,
+        request_type: 'Consulting enquiry',
+        name: name,
+        email: email,
+        phone: phone,
+        service: service,
+        location: loc,
+        land_size: size,
+        details: project,
+        submitted_at: new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg' })
+      })
+    }).catch(function(){});
+  } catch(e){}
+
+  // 2. Open WhatsApp as an instant backup ping
+  if (typeof showNotif === 'function') showNotif('Sending your request...', 'success');
+  setTimeout(function(){ window.open(waUrl, '_blank'); }, 800);
+  document.getElementById('consultForm').reset();
+}
+</script>
+</body>
+</html>
