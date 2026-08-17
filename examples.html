@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- ARRIVAL COVER — runs before any paint, prevents flash -->
+  <script>
+  (function(){
+    try {
+      if (sessionStorage.getItem('clxArriving') !== '1') return;
+      sessionStorage.removeItem('clxArriving');
+      document.documentElement.style.background = '#060609';
+      var s = document.createElement('style');
+      s.id = 'clxCover';
+      s.textContent = 'body{opacity:0!important;transition:none!important}';
+      document.head.appendChild(s);
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var el = document.getElementById('clxCover');
+          if (el) el.textContent = 'body{opacity:1;transition:opacity .55s ease}';
+        }, 80);
+      });
+    } catch(e){}
+  })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Examples — CLEXYT Apps &amp; Data Systems</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230a0a0f'/><circle cx='50' cy='50' r='20' fill='none' stroke='%2300f3ff' stroke-width='4'/><circle cx='50' cy='50' r='8' fill='%2300f3ff'/></svg>">
+  <link rel="stylesheet" href="style.css">
+
+<!-- =========================================================
+     EXAMPLES HUB — SCOPED STYLES ONLY (.examples-hub)
+     Cannot leak onto other pages. No edits to style.css/script.js.
+     Same pattern as consulting.html's .consulting-hub scope.
+     ========================================================= -->
+<style>
+.nav-pinch-hint { display: none; }
+@media (max-width: 768px) {
+  .nav-pinch-hint {
+    display: inline-flex; align-items: center;
+    font-family: "Space Mono", monospace;
+    font-size: .45rem; letter-spacing: .12em;
+    color: rgba(0,240,224,.62);
+    background: rgba(0,240,224,.055);
+    border: 1px solid rgba(0,240,224,.22);
+    border-radius: 20px; padding: .18rem .55rem;
+    white-space: nowrap; margin: 0 auto;
+    animation: navPinchGlow 2.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes navPinchGlow {
+    0%,100% { box-shadow: 0 0 4px rgba(0,240,224,.15); }
+    50%     { box-shadow: 0 0 10px rgba(0,240,224,.45), 0 0 20px rgba(0,240,224,.12); }
+  }
+}
+
+.examples-hub .page-backdrop {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(10,10,16,0.80) 0%, rgba(10,10,16,0.86) 100%);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+
+.examples-hub .hub-hero {
+  position: relative; z-index: 3;
+  max-width: 1100px; margin: 0 auto;
+  padding: calc(var(--nav-h) + 3.5rem) 2rem 1.5rem;
+  text-align: center;
+}
+.examples-hub .hub-tag {
+  font-family: var(--font-m); font-size: .68rem; letter-spacing: .2em;
+  color: var(--cyan); margin-bottom: 1rem;
+}
+.examples-hub .hub-hero h1 {
+  font-size: clamp(2.2rem, 5vw, 3.6rem); font-weight: 800;
+  letter-spacing: -.03em; line-height: 1.06; margin-bottom: 1.1rem;
+  color: #ffffff;
+}
+.examples-hub .hub-hero p {
+  font-size: 1rem; color: rgba(255,255,255,0.74);
+  max-width: 620px; margin: 0 auto; line-height: 1.7;
+}
+
+/* project cards — same visual language as consulting.html's hub-card */
+.examples-hub .ex-grid {
+  position: relative; z-index: 3;
+  max-width: 1100px; margin: 1.5rem auto 0;
+  padding: 0 2rem 5rem;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
+}
+.examples-hub .ex-card {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column;
+  padding: 2rem;
+  background: rgba(22,22,31,0.82);
+  border: 1px solid var(--border); border-radius: 8px;
+  transition: transform .3s var(--ease), border-color .3s, background .3s;
+}
+.examples-hub .ex-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0,240,224,.4);
+  background: rgba(22,22,31,0.95);
+}
+.examples-hub .ex-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(to right, transparent, var(--cyan), transparent);
+  transform: scaleX(0); transition: transform .4s var(--ease);
+}
+.examples-hub .ex-card:hover::before { transform: scaleX(1); }
+
+.examples-hub .ex-tag {
+  font-family: var(--font-m); font-size: .62rem; letter-spacing: .14em;
+  color: var(--cyan); margin-bottom: .9rem;
+  display: inline-flex; align-items: center; gap: .4rem;
+}
+.examples-hub .ex-tag-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cyan); box-shadow: 0 0 8px rgba(0,240,224,.7);
+}
+.examples-hub .ex-card h2 {
+  font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em;
+  margin-bottom: .6rem; color: #ffffff;
+}
+.examples-hub .ex-card p {
+  font-size: .87rem; color: rgba(255,255,255,0.62);
+  line-height: 1.7; margin-bottom: 1rem;
+}
+.examples-hub .ex-features {
+  list-style: none; padding: 0; margin: 0 0 1.4rem;
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.examples-hub .ex-features li {
+  font-size: .8rem; color: rgba(255,255,255,0.72);
+  display: flex; align-items: center; gap: .55rem;
+}
+.examples-hub .ex-features li::before {
+  content: ''; flex: none; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--cyan);
+}
+.examples-hub .ex-meta {
+  margin-top: auto; display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+}
+.examples-hub .ex-btn {
+  display: inline-flex; align-items: center; gap: .55rem;
+  padding: .8rem 1.5rem; border-radius: 3px;
+  font-family: var(--font-m); font-size: .76rem; letter-spacing: .08em;
+  text-decoration: none; border: 1px solid rgba(0,240,224,.4); color: var(--cyan);
+  transition: background .2s, border-color .2s;
+}
+.examples-hub .ex-btn:hover { background: rgba(0,240,224,.08); border-color: var(--cyan); }
+.examples-hub .ex-btn svg { transition: transform .2s; }
+.examples-hub .ex-btn:hover svg { transform: translateX(3px); }
+.examples-hub .ex-note {
+  font-family: var(--font-m); font-size: .68rem; color: rgba(255,255,255,0.4);
+}
+
+/* "more coming" placeholder card */
+.examples-hub .ex-card.placeholder {
+  align-items: center; justify-content: center; text-align: center;
+  border-style: dashed; opacity: .55;
+}
+.examples-hub .ex-card.placeholder:hover { transform: none; border-color: var(--border); background: rgba(22,22,31,0.82); }
+.examples-hub .ex-card.placeholder p { margin: 0; font-size: .85rem; }
+
+@media (max-width: 768px) {
+  .examples-hub .ex-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body class="examples-hub">
+
+<div class="c-dot"></div>
+<div class="c-ring"></div>
+<canvas id="starfield" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+<div class="page-backdrop"></div>
+
+<nav id="nav">
+  <a href="index.html" class="nav-logo">CLEXYT<span class="nav-dot"></span></a>
+  <span class="nav-pinch-hint">pinch to zoom</span>
+  <div class="nav-links">
+    <a href="photography.html">Photography</a>
+    <a href="consulting.html">Consulting</a>
+    <a href="examples.html" style="color:var(--text)">Examples</a>
+    <a href="contact.html">Contact</a>
+    <a href="photography.html#gallery">Portfolio</a>
+    <a href="booking.html" class="nav-cta">Book Now</a>
+  </div>
+  <button class="burger" id="burger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mob-nav" id="mobNav">
+  <a href="index.html">Home</a>
+  <a href="photography.html">Photography</a>
+  <a href="consulting.html">Consulting</a>
+  <a href="examples.html">Examples</a>
+  <a href="contact.html">Contact</a>
+  <a href="photography.html#gallery">Portfolio</a>
+  <a href="booking.html">Book Now</a>
+</div>
+
+<!-- HERO -->
+<div class="hub-hero">
+  <div class="hub-tag">REAL SYSTEMS, RUNNING TODAY</div>
+  <h1>Apps built and<br>deployed in the field</h1>
+  <p>Not concepts — working software already running on real operations. Below are live examples you can try yourself.</p>
+</div>
+
+<!-- PROJECT CARDS -->
+<div class="ex-grid">
+
+  <div class="ex-card">
+    <div class="ex-tag"><span class="ex-tag-dot"></span>POULTRY / AGRITECH</div>
+    <h2>EGGSACT</h2>
+    <p>A full farm data-capture system for layer trials — built for real production use, not a demo. Runs on the farm's own PCs as the master record, with a companion phone app so workers can capture data offline and sync it in when they're back in range.</p>
+    <ul class="ex-features">
+      <li>Works fully offline — nothing lost without signal</li>
+      <li>Per-house data, formulas and reports built in</li>
+      <li>Installs straight from the browser, no app store</li>
+    </ul>
+    <div class="ex-meta">
+      <a class="ex-btn" href="eggsact-worker/">
+        Try the worker app
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <span class="ex-note">Opens on your phone — add it to your Home Screen to install</span>
+    </div>
+  </div>
+
+  <div class="ex-card placeholder">
+    <p>More examples coming soon</p>
+  </div>
+
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">CLEXYT</div>
+      <p>Agricultural Consulting &amp; Data Systems</p>
+      <p>Pretoria, South Africa</p>
+    </div>
+    <div class="footer-links">
+      <a href="photography.html">Photography</a>
+      <a href="consulting.html">Consulting</a>
+      <a href="examples.html">Examples</a>
+      <a href="booking.html">Book Now</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <div class="footer-contact">
+      <a href="mailto:cletusmulaudi32@gmail.com">cletusmulaudi32@gmail.com</a>
+      <a href="tel:+27742959835">074 295 9835</a>
+      <a href="https://instagram.com/clexyt14" target="_blank">@clexyt14</a>
+    </div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2025 CLEXYT Studio. All rights reserved.</span></div>
+</footer>
+
+<script src="starfield.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

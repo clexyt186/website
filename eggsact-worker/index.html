@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0e1a">
+<title>EGGSACT Worker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="login-screen" class="screen">
+  <div class="card login-card">
+    <h1>EGGSACT</h1>
+    <p class="dim">Worker capture</p>
+    <label for="login-name">Your name</label>
+    <input id="login-name" type="text" autocomplete="off" placeholder="e.g. Sam">
+    <label for="login-pin">PIN</label>
+    <input id="login-pin" type="password" inputmode="numeric" autocomplete="off">
+    <button id="login-btn" class="primary">Continue</button>
+    <p id="login-status" class="dim small"></p>
+  </div>
+</div>
+
+<div id="capture-screen" class="screen hidden">
+  <header>
+    <div>
+      <strong>EGGSACT</strong>
+      <span class="dim">Signed in: <span id="who"></span></span>
+    </div>
+    <button id="logout-btn" class="text-btn">Sign out</button>
+  </header>
+
+  <div class="status-bar">
+    <div><span id="pending-count">0</span> pending &middot; <span id="total-count">0</span> total</div>
+    <div class="dim">Synced: <span id="last-synced">never</span> &middot; Backed up: <span id="last-backed-up">never</span></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label for="house-select">House</label>
+      <select id="house-select"></select>
+    </div>
+    <div class="row">
+      <label for="f-date">Date</label>
+      <input id="f-date" type="date">
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="egg">Eggs</button>
+    <button class="tab-btn" data-tab="feed">Feed</button>
+    <button class="tab-btn" data-tab="mortality">Deaths</button>
+    <button class="tab-btn" data-tab="bodyweight">Weights</button>
+    <button class="tab-btn" data-tab="eggquality">Quality</button>
+    <button class="tab-btn" data-tab="mydata">My Data</button>
+  </div>
+
+  <div class="card tab-panel" id="tab-egg">
+    <h2>Daily Eggs</h2>
+    <div class="row">
+      <label for="f-pen">Pen</label>
+      <input id="f-pen" type="number" inputmode="numeric">
+    </div>
+    <div class="row">
+      <label for="f-eggs">Number of Eggs</label>
+      <input id="f-eggs" type="number" inputmode="numeric">
+    </div>
+    <div class="row">
+      <label for="f-weight">Weight</label>
+      <input id="f-weight" type="number" inputmode="decimal" step="0.01">
+    </div>
+    <div class="row">
+      <label for="f-nonlayer">Non Layer</label>
+      <input id="f-nonlayer" type="number" inputmode="numeric">
+    </div>
+    <div class="row">
+      <label for="f-rejects">Number of Rejects</label>
+      <input id="f-rejects" type="number" inputmode="numeric">
+    </div>
+    <div class="row">
+      <label for="f-reason">Reason</label>
+      <input id="f-reason" type="text">
+    </div>
+    <button id="save-egg-btn" class="primary big">SAVE (Enter)</button>
+    <p class="dim small">Enter moves to the next field. Saving jumps to the next pen automatically.</p>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-feed">
+    <h2>Feed Orts</h2>
+    <div class="row">
+      <label for="feed-pen">Pen</label>
+      <input id="feed-pen" type="number" inputmode="numeric">
+    </div>
+    <div class="row">
+      <label for="feed-orts">Feed Orts (kg)</label>
+      <input id="feed-orts" type="number" inputmode="decimal" step="0.01">
+    </div>
+    <button id="save-feed-btn" class="primary big">SAVE (Enter)</button>
+    <p class="dim small">Bird # and Allocation aren't captured here - the master keeps those
+      as-is. Only Orts is sent, so nothing gets overwritten by mistake.</p>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-mortality">
+    <h2>Mortality / Cull</h2>
+    <div class="row">
+      <label for="mort-pen">Pen</label>
+      <input id="mort-pen" type="number" inputmode="numeric">
+    </div>
+    <div class="row">
+      <label for="mort-weight">Weight (optional)</label>
+      <input id="mort-weight" type="number" inputmode="decimal" step="0.01">
+    </div>
+    <div class="row">
+      <label for="mort-reason">Reason</label>
+      <input id="mort-reason" type="text">
+    </div>
+    <button id="save-mort-btn" class="primary big">SAVE (Enter)</button>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-bodyweight">
+    <h2>Body Weight</h2>
+    <div class="row">
+      <label for="bw-pen">Pen</label>
+      <input id="bw-pen" type="number" inputmode="numeric">
+    </div>
+    <div class="row">
+      <label for="bw-hen">Hen</label>
+      <select id="bw-hen">
+        <option>A</option><option>B</option><option>C</option><option>D</option>
+        <option>E</option><option>F</option><option>G</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="bw-weight">Weight</label>
+      <input id="bw-weight" type="number" inputmode="decimal" step="0.01">
+    </div>
+    <button id="save-bw-btn" class="primary big">SAVE (Enter)</button>
+    <p class="dim small">Saving jumps to the next hen automatically, then the next pen.</p>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-eggquality">
+    <h2>Egg Quality</h2>
+    <div class="row">
+      <label for="eq-egg">Egg Number</label>
+      <input id="eq-egg" type="number" inputmode="numeric">
+    </div>
+    <div class="row">
+      <label for="eq-diameter">Diameter</label>
+      <input id="eq-diameter" type="number" inputmode="decimal" step="0.01">
+    </div>
+    <div class="row">
+      <label for="eq-height">Height</label>
+      <input id="eq-height" type="number" inputmode="decimal" step="0.01">
+    </div>
+    <div class="row">
+      <label for="eq-top">Top</label>
+      <input id="eq-top" type="number" inputmode="decimal" step="0.0001">
+    </div>
+    <div class="row">
+      <label for="eq-bottom">Bottom</label>
+      <input id="eq-bottom" type="number" inputmode="decimal" step="0.0001">
+    </div>
+    <div class="row">
+      <label for="eq-equater">Equater</label>
+      <input id="eq-equater" type="number" inputmode="decimal" step="0.0001">
+    </div>
+    <div class="row">
+      <label for="eq-force">Force at Break [N]</label>
+      <input id="eq-force" type="number" inputmode="decimal" step="0.01">
+    </div>
+    <div class="row">
+      <label for="eq-displacement">Displacement at Break [mm]</label>
+      <input id="eq-displacement" type="number" inputmode="decimal" step="0.01">
+    </div>
+    <div class="row">
+      <label for="eq-eggweight">Individual Egg Weight</label>
+      <input id="eq-eggweight" type="number" inputmode="decimal" step="0.01">
+    </div>
+    <button id="save-eq-btn" class="primary big">SAVE (Enter)</button>
+    <p class="dim small">Enter moves through the fields; saving jumps to the next egg number.</p>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-mydata">
+    <h2>My Recent Entries</h2>
+    <p class="dim small" id="mydata-window-note"></p>
+    <div id="mydata-list"></div>
+
+    <h2 style="margin-top:20px">Data Sheet</h2>
+    <p class="dim small">Eggs and Weight highlighted against this device's own recent average — green
+      within range, red more than 2 standard deviations off. Needs at least 10 entries to judge.</p>
+    <div class="row">
+      <label for="sheet-type">Show</label>
+      <select id="sheet-type">
+        <option value="egg">Eggs</option>
+        <option value="feed">Feed</option>
+        <option value="mortality">Deaths</option>
+        <option value="bodyweight">Weights</option>
+        <option value="eggquality">Quality</option>
+      </select>
+    </div>
+    <div id="mydata-sheet"></div>
+
+    <h2 style="margin-top:20px">Full Master File</h2>
+    <p class="dim small">Only shows for houses you've been given full access to.</p>
+    <div id="mydata-downloads"></div>
+  </div>
+
+  <div id="flash" class="flash"></div>
+
+  <div class="action-row">
+    <button id="sync-btn" class="accent">Sync</button>
+    <button id="export-btn">Export</button>
+    <button id="settings-btn" class="text-btn">Settings</button>
+  </div>
+</div>
+
+<div id="backup-modal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Back up your captured data?</h2>
+    <p id="backup-modal-text" class="dim"></p>
+    <div class="modal-actions">
+      <button id="backup-modal-yes" class="primary">Download now</button>
+      <button id="backup-modal-later" class="text-btn">Remind me later</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/vendor/xlsx.full.min.js"></script>
+<script src="js/db.js"></script>
+<script src="js/xlsx-export.js"></script>
+<script src="js/autocorrect.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
