@@ -20,10 +20,20 @@ point at a DIFFERENT server (e.g. Farm instead of Home) than everyone
 else.
 */
 
-const DEFAULT_SERVER_URL = "https://purse-delta-humming.ngrok-free.dev";
+const DEFAULT_SERVER_URL = "http://127.0.0.1:5085";
 const HOUSES = ["House Nketlwane", "House Tsholanang"];
 let SERVER_URL = localStorage.getItem("eggsact_server_url") || DEFAULT_SERVER_URL;
-const BACKUP_REMINDER_MINUTES = Number(localStorage.getItem("eggsact_reminder_minutes") || 10);
+
+// Captured as early as possible (before login, before anything) so it's
+// ready to use the instant login succeeds. Chrome/Edge on Android and
+// desktop fire this - Safari (iPhone) NEVER fires it, there's no
+// programmatic install API there at all, only the manual Share menu.
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+const BACKUP_REMINDER_MINUTES = Number(localStorage.getItem("eggsact_reminder_minutes") || 40);
 
 let state = { person: null, pin: null, profile: null, house: HOUSES[0] };
 let pens = { egg: 1, feed: 1, mortality: 1, bodyweight: 1 };
@@ -59,7 +69,7 @@ async function doLogin() {
   if (!name || !pin) { $("#login-status").textContent = "Enter your name and PIN."; return; }
   $("#login-status").textContent = "Checking…";
   try {
-    const resp = await fetch(`${DEFAULT_SERVER_URL}/sync/login`, {
+    const resp = await fetch(`${SERVER_URL}/sync/login`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, pin }),
     });
@@ -70,7 +80,7 @@ async function doLogin() {
     }
     state.person = name;
     state.pin = pin;   // kept in memory only, for the download endpoint - never stored to disk
-    state.profile = { forms: body.forms, house_access: body.house_access, recent_days: body.recent_days };
+    state.profile = { forms: body.forms, house_access: body.house_access, recent_days: body.recent_days, is_main_admin: body.is_main_admin };
     localStorage.setItem("eggsact_person", name);
     localStorage.setItem("eggsact_profile", JSON.stringify(state.profile));
     showCapture();
@@ -98,12 +108,14 @@ function showCapture() {
   refreshStatus();
   focusPen("egg");
   startReminderTimer();
+  maybeShowInstallPrompt();
 }
 
 function switchTab(tab) {
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
   document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("hidden", p.id !== `tab-${tab}`));
   if (tab === "mydata") { renderMyData(); return; }
+  if (tab === "messages") { renderMessages(); return; }
   const focusMap = { egg: "#f-pen", feed: "#feed-pen", mortality: "#mort-pen",
                     bodyweight: "#bw-pen", eggquality: "#eq-egg" };
   $(focusMap[tab]).focus();
@@ -143,6 +155,198 @@ async function renderMyData() {
   }
 
   renderDataSheet();
+  renderTeam();
+}
+
+async function renderTeam() {
+  const section = $("#mydata-team-section");
+  if (!state.profile || !state.profile.is_main_admin) {
+    section.classList.add("hidden");
+    return;
+  }
+  section.classList.remove("hidden");
+  const el = $("#mydata-team");
+  el.innerHTML = `<p class="dim small">Loading…</p>`;
+  try {
+    const url = `${SERVER_URL}/sync/people?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(state.pin || "")}`;
+    const resp = await fetch(url);
+    const body = await resp.json();
+    if (!resp.ok || !body.ok) {
+      if (resp.status === 401 || resp.status === 403) {
+        el.innerHTML = `<p class="dim small">Re-enter your PIN (tap Sync or a download once) to load this.</p>`;
+      } else {
+        el.innerHTML = `<p class="dim small">${body.error || "Couldn't load."}</p>`;
+      }
+      return;
+    }
+    if (body.people.length === 0) {
+      el.innerHTML = `<p class="dim small">No one's synced data yet.</p>`;
+      return;
+    }
+    el.innerHTML = body.people.map((p) =>
+      `<div class="team-row">
+         <span>${p.person}</span>
+         <span class="dim">${p.file_count} file${p.file_count === 1 ? "" : "s"} · last ${timeAgo(p.last_synced)}</span>
+         <button class="team-dl-btn" data-person="${p.person}">Download</button>
+       </div>`
+    ).join("");
+    el.querySelectorAll(".team-dl-btn").forEach((btn) => {
+      btn.addEventListener("click", () => downloadPersonData(btn.dataset.person));
+    });
+  } catch (e) {
+    el.innerHTML = `<p class="dim small">Network error: ${e.message}</p>`;
+  }
+}
+
+// ---------------------------------------------------------------- messages
+let selectedThreadWorker = null;
+
+function ensurePin(promptText) {
+  if (state.pin) return state.pin;
+  const pin = prompt(promptText);
+  if (pin) state.pin = pin;
+  return state.pin;
+}
+
+async function renderMessages() {
+  const isAdmin = state.profile && state.profile.is_main_admin;
+  const pin = ensurePin("Re-enter your PIN to load messages:");
+  if (!pin) { $("#msg-thread").innerHTML = `<p class="dim small">PIN needed to load messages.</p>`; return; }
+
+  if (isAdmin) {
+    $("#msg-admin-thread-list").classList.remove("hidden");
+    try {
+      const resp = await fetch(`${SERVER_URL}/sync/message/all_threads?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(pin)}`);
+      const body = await resp.json();
+      if (!resp.ok || !body.ok) { $("#msg-admin-thread-list").innerHTML = `<p class="dim small">${body.error || "Couldn't load."}</p>`; return; }
+      const names = Object.keys(body.threads);
+      if (names.length === 0) {
+        $("#msg-admin-thread-list").innerHTML = `<p class="dim small">No one's messaged yet.</p>`;
+        $("#msg-thread").innerHTML = "";
+        return;
+      }
+      if (!selectedThreadWorker || !names.includes(selectedThreadWorker)) selectedThreadWorker = names[0];
+      $("#msg-admin-thread-list").innerHTML = names.map((n) =>
+        `<button class="thread-pick-btn ${n === selectedThreadWorker ? "active" : ""}" data-worker="${n}">
+           ${n}${body.threads[n].unread ? ` (${body.threads[n].unread})` : ""}
+         </button>`
+      ).join("");
+      $("#msg-admin-thread-list").querySelectorAll(".thread-pick-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          selectedThreadWorker = btn.dataset.worker;
+          await fetch(`${SERVER_URL}/sync/message/mark_read`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: state.person, pin: state.pin, worker: selectedThreadWorker }),
+          });
+          renderMessages();
+        });
+      });
+      renderThreadMessages(body.threads[selectedThreadWorker].messages);
+    } catch (e) {
+      $("#msg-admin-thread-list").innerHTML = `<p class="dim small">Network error: ${e.message}</p>`;
+    }
+  } else {
+    $("#msg-admin-thread-list").classList.add("hidden");
+    try {
+      const resp = await fetch(`${SERVER_URL}/sync/message/thread?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(pin)}`);
+      const body = await resp.json();
+      if (!resp.ok || !body.ok) { $("#msg-thread").innerHTML = `<p class="dim small">${body.error || "Couldn't load."}</p>`; return; }
+      renderThreadMessages(body.messages);
+    } catch (e) {
+      $("#msg-thread").innerHTML = `<p class="dim small">Network error: ${e.message}</p>`;
+    }
+  }
+}
+
+function renderThreadMessages(messages) {
+  const el = $("#msg-thread");
+  if (!messages || messages.length === 0) {
+    el.innerHTML = `<p class="dim small">No messages yet.</p>`;
+    return;
+  }
+  el.innerHTML = messages.map((m) =>
+    `<div class="msg-row ${m.from === "ADMIN" ? "msg-admin" : "msg-worker"}">
+       <span class="msg-from">${m.from === "ADMIN" ? "Admin" : m.from}</span>
+       <span class="msg-text">${m.text}</span>
+       <span class="msg-ts dim">${m.ts.replace("T", " ")}</span>
+     </div>`
+  ).join("");
+}
+
+async function sendMessage() {
+  const text = $("#msg-input").value.trim();
+  if (!text) return;
+  const pin = ensurePin("Re-enter your PIN to send:");
+  if (!pin) return;
+  const isAdmin = state.profile && state.profile.is_main_admin;
+  const body = { name: state.person, pin, text };
+  if (isAdmin) {
+    if (!selectedThreadWorker) { flashStatus("Pick a worker to message first.", true); return; }
+    body.to = selectedThreadWorker;
+  }
+  try {
+    const resp = await fetch(`${SERVER_URL}/sync/message/send`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    const r = await resp.json();
+    if (!resp.ok || !r.ok) { flashStatus(r.error || "Couldn't send.", true); return; }
+    $("#msg-input").value = "";
+    renderMessages();
+  } catch (e) {
+    flashStatus(`Network error: ${e.message}`, true);
+  }
+}
+
+/* Opportunistic unread check - piggybacks on refreshStatus's existing
+   cadence rather than a new timer. Best-effort: fails silently offline,
+   matching how the rest of the app treats no-connectivity moments. */
+async function checkUnreadMessages() {
+  if (!state.person || !state.pin) return;
+  try {
+    const isAdmin = state.profile && state.profile.is_main_admin;
+    const url = isAdmin
+      ? `${SERVER_URL}/sync/message/all_threads?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(state.pin)}`
+      : `${SERVER_URL}/sync/message/thread?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(state.pin)}`;
+    const resp = await fetch(url);
+    const body = await resp.json();
+    if (!resp.ok || !body.ok) return;
+    let unread = 0;
+    if (isAdmin) {
+      for (const t of Object.values(body.threads)) unread += t.unread;
+    } else {
+      unread = (body.messages || []).filter((m) => m.from === "ADMIN" && !m.read_by_worker).length;
+    }
+    $("#msg-unread-dot").classList.toggle("hidden", unread === 0);
+  } catch (e) { /* offline or server down - stay quiet, this is best-effort only */ }
+}
+
+async function downloadPersonData(person) {
+  if (!state.pin) {
+    const pin = prompt(`Re-enter your PIN to download ${person}'s synced files:`);
+    if (!pin) return;
+    state.pin = pin;
+  }
+  flashStatus(`Downloading ${person}'s data…`);
+  try {
+    const url = `${SERVER_URL}/sync/person_download?name=${encodeURIComponent(state.person)}` +
+               `&pin=${encodeURIComponent(state.pin)}&person=${encodeURIComponent(person)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      state.pin = null;
+      flashStatus(body.error || `Download failed (${resp.status}).`, true);
+      return;
+    }
+    const blob = await resp.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objUrl; a.download = `${person}_synced_files.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(objUrl);
+    flashStatus(`Downloaded ${person}'s synced files.`);
+  } catch (e) {
+    flashStatus(`Network error: ${e.message}`, true);
+  }
 }
 
 function mean(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
@@ -203,7 +407,7 @@ async function downloadMasterFile(house) {
   }
   flashStatus(`Downloading ${house}…`);
   try {
-    const url = `${DEFAULT_SERVER_URL}/sync/master_file?name=${encodeURIComponent(state.person)}` +
+    const url = `${SERVER_URL}/sync/master_file?name=${encodeURIComponent(state.person)}` +
                `&pin=${encodeURIComponent(state.pin)}&house=${encodeURIComponent(house)}`;
     const resp = await fetch(url);
     if (!resp.ok) {
@@ -425,6 +629,7 @@ async function refreshStatus() {
   $("#last-synced").textContent = lastSynced ? timeAgo(lastSynced) : "never";
   $("#last-backed-up").textContent = lastBackedUp ? timeAgo(lastBackedUp) : "never";
   hasUnsyncedData = unsynced.length > 0;
+  checkUnreadMessages();
 }
 
 function timeAgo(iso) {
@@ -467,6 +672,7 @@ function startReminderTimer() {
 async function maybePromptBackup() {
   if (entriesSinceLastPrompt === 0) return;   // nothing new captured - don't nag for no reason
   const unsynced = await DB.unsyncedEntries();
+  if (unsynced.length === 0) { entriesSinceLastPrompt = 0; return; }   // already synced - nothing at risk, stay quiet
   $("#backup-modal-text").textContent =
     `You've captured ${entriesSinceLastPrompt} new entr${entriesSinceLastPrompt === 1 ? "y" : "ies"} ` +
     `since the last check (${unsynced.length} not yet synced). Download a backup now, just in case?`;
@@ -477,6 +683,62 @@ function dismissBackupModal(download) {
   $("#backup-modal").classList.add("hidden");
   entriesSinceLastPrompt = 0;
   if (download) handleExport();
+}
+
+// ---------------------------------------------------------------- install prompt
+function isAlreadyInstalled() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+/*
+Shown once, right after the FIRST successful login - so the very next time
+they open it (no internet needed) they're already offline-capable, instead
+of "visit the site, sign in" being something they repeat every day.
+
+Real limitation, not something fixable from here: only Chrome/Edge give a
+website a button that actually TRIGGERS install. Safari on iPhone has no
+such API at all - the manual Share -> Add to Home Screen is the only path
+there, so that's what gets shown on iOS instead of a fake button.
+*/
+function showInstallModal() {
+  const actionBtn = $("#install-modal-action");
+  if (deferredInstallPrompt) {
+    $("#install-modal-text").textContent =
+      "Add it to your home screen now, so tomorrow you can open it straight away - fully offline, no need to visit the site or sign in again first.";
+    actionBtn.textContent = "Install now";
+    actionBtn.onclick = async () => {
+      $("#install-modal").classList.add("hidden");
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+    };
+  } else if (isIOS()) {
+    $("#install-modal-text").textContent =
+      "Tap the Share icon at the bottom of Safari, then \"Add to Home Screen\". Do this now, so tomorrow you can open it straight away - fully offline, no need to visit the site or sign in again first.";
+    actionBtn.textContent = "Got it";
+    actionBtn.onclick = () => $("#install-modal").classList.add("hidden");
+  } else {
+    $("#install-modal-text").textContent =
+      "Look for \"Install app\" or \"Add to Home Screen\" in your browser's menu. Do this now, so tomorrow you can open it straight away - fully offline, no need to visit the site or sign in again first.";
+    actionBtn.textContent = "Got it";
+    actionBtn.onclick = () => $("#install-modal").classList.add("hidden");
+  }
+  $("#install-modal").classList.remove("hidden");
+}
+
+function maybeShowInstallPrompt() {
+  if (isAlreadyInstalled()) return;
+  if (localStorage.getItem("eggsact_install_prompted")) return;
+  localStorage.setItem("eggsact_install_prompted", "1");
+  showInstallModal();
+}
+
+function handleInstallButton() {
+  if (isAlreadyInstalled()) { flashStatus("Already installed on this device."); return; }
+  showInstallModal();
 }
 
 // ---------------------------------------------------------------- close/leave warning
@@ -553,9 +815,13 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#sync-btn").addEventListener("click", handleSync);
   $("#export-btn").addEventListener("click", handleExport);
   $("#settings-btn").addEventListener("click", saveServerUrl);
+  $("#install-btn").addEventListener("click", handleInstallButton);
+  $("#install-modal-later").addEventListener("click", () => $("#install-modal").classList.add("hidden"));
   $("#backup-modal-yes").addEventListener("click", () => dismissBackupModal(true));
   $("#backup-modal-later").addEventListener("click", () => dismissBackupModal(false));
   $("#sheet-type").addEventListener("change", renderDataSheet);
+  $("#msg-send-btn").addEventListener("click", sendMessage);
+  $("#msg-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sendMessage(); } });
 
   initLogin();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js").catch(() => {});

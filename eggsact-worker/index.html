@@ -16,8 +16,8 @@
     <p class="dim">Worker capture</p>
     <label for="login-name">Your name</label>
     <input id="login-name" type="text" autocomplete="off" placeholder="e.g. Sam">
-    <label for="login-pin">PIN</label>
-    <input id="login-pin" type="password" inputmode="numeric" autocomplete="off">
+    <label for="login-pin">PIN / Password</label>
+    <input id="login-pin" type="password" autocomplete="off">
     <button id="login-btn" class="primary">Continue</button>
     <p id="login-status" class="dim small"></p>
   </div>
@@ -55,6 +55,7 @@
     <button class="tab-btn" data-tab="bodyweight">Weights</button>
     <button class="tab-btn" data-tab="eggquality">Quality</button>
     <button class="tab-btn" data-tab="mydata">My Data</button>
+    <button class="tab-btn" data-tab="messages">Messages <span id="msg-unread-dot" class="hidden">●</span></button>
   </div>
 
   <div class="card tab-panel" id="tab-egg">
@@ -205,6 +206,25 @@
     <h2 style="margin-top:20px">Full Master File</h2>
     <p class="dim small">Only shows for houses you've been given full access to.</p>
     <div id="mydata-downloads"></div>
+
+    <div id="mydata-team-section" class="hidden">
+      <h2 style="margin-top:20px">Team</h2>
+      <p class="dim small">Who's synced data, and a download of exactly what they sent.</p>
+      <div id="mydata-team"></div>
+    </div>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-messages">
+    <h2>Messages</h2>
+    <p class="dim small">A private line to the main admin - no pop-ups, you'll see new messages
+      whenever you open this tab.</p>
+    <div id="msg-admin-thread-list"></div>
+    <div id="msg-thread"></div>
+    <div class="row">
+      <label for="msg-input">Message</label>
+      <input id="msg-input" type="text" placeholder="e.g. Pen 12 has a weird smell today">
+    </div>
+    <button id="msg-send-btn" class="primary">Send</button>
   </div>
 
   <div id="flash" class="flash"></div>
@@ -213,6 +233,18 @@
     <button id="sync-btn" class="accent">Sync</button>
     <button id="export-btn">Export</button>
     <button id="settings-btn" class="text-btn">Settings</button>
+    <button id="install-btn" class="text-btn">Install app</button>
+  </div>
+</div>
+
+<div id="install-modal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Install EGGSACT for offline use</h2>
+    <p id="install-modal-text" class="dim"></p>
+    <div class="modal-actions">
+      <button id="install-modal-action" class="primary"></button>
+      <button id="install-modal-later" class="text-btn">Maybe later</button>
+    </div>
   </div>
 </div>
 
