@@ -33,30 +33,28 @@ function showLogin() {
   $("#login-name").focus();
 }
 
-async function doLogin() {
+// Group passwords - same list as FeedAlot's config.json. Checked locally,
+// no server needed for login at all - matches the desktop app's own login,
+// which also never touches a server. Only syncing needs a connection.
+const GROUP_PASSWORDS = {
+  "Group 1": "group1", "Group 2": "group2", "Group 3": "group3",
+  "Group 4": "group4", "Group 5 - Merino Mob": "group5",
+};
+
+function doLogin() {
   const group = $("#group-select").value;
   const name = $("#login-name").value.trim();
   const pw = $("#login-pw").value;
   if (!name || !pw) { $("#login-status").textContent = "Enter your name and this group's password."; return; }
-  $("#login-status").textContent = "Checking…";
-  try {
-    const resp = await fetch(`${SERVER_URL}/feedlot/sync/login`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ group, name, password: pw }),
-    });
-    const body = await resp.json();
-    if (!resp.ok || !body.ok) {
-      $("#login-status").textContent = body.error || "Wrong password for this group.";
-      return;
-    }
-    state = { group, name, password: pw };
-    localStorage.setItem("feedalot_group", group);
-    localStorage.setItem("feedalot_name", name);
-    localStorage.setItem("feedalot_pw", pw);
-    showCapture();
-  } catch (e) {
-    $("#login-status").textContent = "Can't reach the server - need internet for first login.";
+  if (pw.trim().toLowerCase() !== GROUP_PASSWORDS[group].trim().toLowerCase()) {
+    $("#login-status").textContent = "Wrong password for this group.";
+    return;
   }
+  state = { group, name, password: pw };
+  localStorage.setItem("feedalot_group", group);
+  localStorage.setItem("feedalot_name", name);
+  localStorage.setItem("feedalot_pw", pw);
+  showCapture();
 }
 
 function logout() {
@@ -298,6 +296,32 @@ async function renderMyData() {
   ).join("");
 }
 
+async function handleRefreshGroup() {
+  $("#refresh-group-btn").disabled = true;
+  $("#refresh-status").textContent = "Downloading…";
+  try {
+    const url = `${SERVER_URL}/feedlot/sync/group_file?group=${encodeURIComponent(state.group)}&password=${encodeURIComponent(state.password)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      $("#refresh-status").textContent = body.error || `Failed (${resp.status}).`;
+      $("#refresh-group-btn").disabled = false;
+      return;
+    }
+    const blob = await resp.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objUrl; a.download = `${state.group.replace(/\s+/g, "_")}_current.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(objUrl);
+    localStorage.setItem("feedalot_last_refresh", new Date().toISOString());
+    $("#refresh-status").textContent = "Downloaded just now - includes everyone's synced data as of right now.";
+  } catch (e) {
+    $("#refresh-status").textContent = `Network error: ${e.message}`;
+  }
+  $("#refresh-group-btn").disabled = false;
+}
+
 // ---------------------------------------------------------------- Formulation
 function safeId(name) {
   return name.replace(/[^a-zA-Z0-9]/g, "_");   // spaces in ingredient names broke raw CSS ID selectors
@@ -393,6 +417,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#settings-btn").addEventListener("click", saveServerUrl);
   $("#formulation-calc-btn").addEventListener("click", calculateFormulation);
   $("#mydata-type").addEventListener("change", renderMyData);
+  $("#refresh-group-btn").addEventListener("click", handleRefreshGroup);
   renderFormulationFields();
 
   initLogin();
