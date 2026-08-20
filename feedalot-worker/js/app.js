@@ -296,6 +296,56 @@ async function renderMyData() {
   ).join("");
 }
 
+// ---------------------------------------------------------------- Scanner Import
+/*
+Same real format confirmed against an actual XR5000 export: a single
+column of comma-joined CSV lines - EID,VID,Weight,Date,Time,Adg,Days,Lwg.
+Each row becomes a normal weighing entry, saved locally exactly like the
+manual Weighing tab would - it flows through the same sync path already
+built and tested, no new server work needed.
+*/
+function parseScannerFile(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, { type: "array" });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  const lines = [];
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    const cell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
+    if (cell && cell.v) lines.push(String(cell.v));
+  }
+  if (lines.length === 0) throw new Error("File appears to be empty.");
+  const header = lines[0].split(",").map((h) => h.trim());
+  const idx = (name) => header.indexOf(name);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(",");
+    if (cols.length < header.length) continue;
+    rows.push({
+      eid: cols[idx("EID")].trim(),
+      vid: cols[idx("VID")].trim(),
+      weight: Number(cols[idx("Weight")]),
+      date: cols[idx("Date")].trim(),
+    });
+  }
+  return rows;
+}
+
+async function handleScannerFile(file) {
+  const resultEl = $("#scanner-result");
+  resultEl.innerHTML = `<p class="dim small">Reading file…</p>`;
+  try {
+    const buffer = await file.arrayBuffer();
+    const rows = parseScannerFile(buffer);
+    for (const row of rows) {
+      await DB.addEntry({ type: "weighing", group: state.group, date: row.date, sheepId: row.vid, weight: row.weight });
+    }
+    resultEl.innerHTML = `<p class="flash ok" style="text-align:left">Queued ${rows.length} readings as weighing entries - hit Sync to send them in.</p>`;
+    afterSave();
+  } catch (e) {
+    resultEl.innerHTML = `<p class="flash error" style="text-align:left">Couldn't read that file: ${e.message}</p>`;
+  }
+}
+
 async function handleRefreshGroup() {
   $("#refresh-group-btn").disabled = true;
   $("#refresh-status").textContent = "Downloading…";
@@ -418,6 +468,9 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#formulation-calc-btn").addEventListener("click", calculateFormulation);
   $("#mydata-type").addEventListener("change", renderMyData);
   $("#refresh-group-btn").addEventListener("click", handleRefreshGroup);
+  $("#scanner-file").addEventListener("change", (e) => {
+    if (e.target.files.length) handleScannerFile(e.target.files[0]);
+  });
   renderFormulationFields();
 
   initLogin();
