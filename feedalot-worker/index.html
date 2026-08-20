@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0e1a">
+<title>CLEVITA FeedAlot</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="login-screen" class="screen">
+  <div class="card login-card">
+    <h1>CLEVITA</h1>
+    <p class="dim">FeedAlot — by Cletus Mulaudi</p>
+    <label for="group-select">Group</label>
+    <select id="group-select">
+      <option value="Group 1">Group 1</option>
+      <option value="Group 2">Group 2</option>
+      <option value="Group 3">Group 3</option>
+      <option value="Group 4">Group 4</option>
+      <option value="Group 5 - Merino Mob">Group 5 - Merino Mob</option>
+    </select>
+    <label for="login-name">Your name</label>
+    <input id="login-name" type="text" autocomplete="off" placeholder="e.g. Thabo">
+    <label for="login-pw">Group password</label>
+    <input id="login-pw" type="password" autocomplete="off">
+    <button id="login-btn" class="primary">Enter</button>
+    <p id="login-status" class="dim small"></p>
+  </div>
+</div>
+
+<div id="capture-screen" class="screen hidden">
+  <header>
+    <div>
+      <strong>CLEVITA FeedAlot</strong>
+      <span class="dim">Signed in: <span id="who"></span> — <span id="group-label"></span></span>
+    </div>
+    <button id="logout-btn" class="text-btn">Sign out</button>
+  </header>
+
+  <div class="status-bar">
+    <div><span id="pending-count">0</span> pending &middot; <span id="total-count">0</span> total</div>
+    <div class="dim">Synced: <span id="last-synced">never</span></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label for="f-date">Date</label>
+      <input id="f-date" type="date">
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="processing">Processing</button>
+    <button class="tab-btn" data-tab="weighing">Weighing</button>
+    <button class="tab-btn" data-tab="feeding">Feeding</button>
+    <button class="tab-btn" data-tab="observations">Observations</button>
+    <button class="tab-btn" data-tab="sick">Sick</button>
+    <button class="tab-btn" data-tab="formulation">Ration</button>
+    <button class="tab-btn" data-tab="mydata">My Data</button>
+  </div>
+
+  <div class="card tab-panel" id="tab-processing">
+    <h2>Processing (new sheep)</h2>
+    <div class="row"><label for="p-eid">EID</label><input id="p-eid" type="text"></div>
+    <div class="row"><label for="p-sheepid">Sheep ID</label><input id="p-sheepid" type="text"></div>
+    <div class="row"><label for="p-weight">Weight (kg)</label><input id="p-weight" type="text" inputmode="decimal"></div>
+    <div class="row"><label for="p-bcs">BCS</label><input id="p-bcs" type="text" inputmode="decimal"></div>
+    <div class="row"><label for="p-status">Status</label><input id="p-status" type="text" placeholder="e.g. Lambs"></div>
+    <button id="save-processing-btn" class="primary big">SAVE (Enter)</button>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-weighing">
+    <h2>Weighing + FAMACHA</h2>
+    <div class="row"><label for="w-sheepid">Sheep ID</label><input id="w-sheepid" type="text"></div>
+    <div class="row"><label for="w-weight">Weight (kg)</label><input id="w-weight" type="text" inputmode="decimal"></div>
+    <div class="row"><label for="w-famacha">FAMACHA (1-5, optional)</label><input id="w-famacha" type="text" inputmode="numeric"></div>
+    <button id="save-weighing-btn" class="primary big">SAVE (Enter)</button>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-feeding">
+    <h2>Daily Feeding</h2>
+    <div class="row"><label for="fd-am-feeders">AM Feeders</label><input id="fd-am-feeders" type="text"></div>
+    <div class="row"><label for="fd-am-out">AM Out</label><input id="fd-am-out" type="text"></div>
+    <div class="row"><label for="fd-am-in">AM In</label><input id="fd-am-in" type="text"></div>
+    <div class="row"><label for="fd-pm-feeders">PM Feeders</label><input id="fd-pm-feeders" type="text"></div>
+    <div class="row"><label for="fd-pm-out">PM Out</label><input id="fd-pm-out" type="text"></div>
+    <div class="row"><label for="fd-pm-in">PM In</label><input id="fd-pm-in" type="text"></div>
+    <div class="row"><label for="fd-notes">Notes</label><input id="fd-notes" type="text"></div>
+    <button id="save-feeding-btn" class="primary big">SAVE LOG (Enter)</button>
+
+    <h2 style="margin-top:18px">Feed Stock</h2>
+    <p class="dim small">How much was actually fed to the animals today.</p>
+    <div class="row"><label for="fs-am">Fed to animals - AM (kg)</label><input id="fs-am" type="text" inputmode="decimal"></div>
+    <div class="row"><label for="fs-pm">Fed to animals - PM (kg)</label><input id="fs-pm" type="text" inputmode="decimal"></div>
+    <button id="save-feedstock-btn" class="primary big">SAVE FEED (Enter)</button>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-observations">
+    <h2>Daily Observations</h2>
+    <div class="row">
+      <label for="o-session">Session</label>
+      <select id="o-session"><option value="AM">AM</option><option value="PM">PM</option></select>
+    </div>
+    <div class="row"><label for="o-behaviour">Behaviour / Condition</label><input id="o-behaviour" type="text"></div>
+    <div class="row"><label for="o-water">Water</label><input id="o-water" type="text"></div>
+    <div class="row"><label for="o-dung">Dung</label><input id="o-dung" type="text"></div>
+    <div class="row"><label for="o-pen">Pen Condition</label><input id="o-pen" type="text"></div>
+    <div class="row"><label for="o-notes">Notes</label><input id="o-notes" type="text"></div>
+    <div class="row"><label for="o-weather">Weather</label><input id="o-weather" type="text"></div>
+    <button id="save-obs-btn" class="primary big">SAVE (Enter)</button>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-sick">
+    <h2>Sick Ewes</h2>
+    <div class="row"><label for="s-sheepid">Sheep ID</label><input id="s-sheepid" type="text"></div>
+    <div class="row"><label for="s-symptoms">Symptoms</label><input id="s-symptoms" type="text"></div>
+    <div class="row"><label for="s-treatment">Treatment</label><input id="s-treatment" type="text"></div>
+    <div class="row"><label for="s-after">Condition After</label><input id="s-after" type="text"></div>
+    <button id="save-sick-btn" class="primary big">SAVE</button>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-formulation">
+    <h2>Ration Builder</h2>
+    <p class="dim small">Build one whole batch (e.g. 200kg for the week). Pick ingredients, enter kg for each.</p>
+    <div id="formulation-fields"></div>
+    <div id="formulation-result" style="margin-top:12px"></div>
+    <button id="formulation-calc-btn" class="primary big">Calculate</button>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-mydata">
+    <h2>My Recent Entries</h2>
+    <p class="dim small">Everything you've captured on this device, most recent first.</p>
+    <div class="row">
+      <label for="mydata-type">Show</label>
+      <select id="mydata-type">
+        <option value="all">Everything</option>
+        <option value="processing">Processing</option>
+        <option value="weighing">Weighing</option>
+        <option value="famacha">FAMACHA</option>
+        <option value="feeding">Feeding Log</option>
+        <option value="feedstock">Feed Stock</option>
+        <option value="obs_am">Observations (AM)</option>
+        <option value="obs_pm">Observations (PM)</option>
+        <option value="sick">Sick</option>
+      </select>
+    </div>
+    <div id="mydata-list"></div>
+    <p class="dim small" style="margin-top:10px">Feed stock's running balance (what's left) is calculated once these sync to the master file - the exact number isn't something this phone can know on its own, since it depends on everything captured before it, on every device.</p>
+  </div>
+
+  <div id="flash" class="flash"></div>
+
+  <div class="action-row">
+    <button id="sync-btn" class="accent">Sync</button>
+    <button id="export-btn">Export</button>
+    <button id="settings-btn" class="text-btn">Settings</button>
+  </div>
+</div>
+
+<script src="js/vendor/xlsx.full.min.js"></script>
+<script src="js/db.js"></script>
+<script src="js/xlsx-export.js"></script>
+<script src="js/numeric_input.js"></script>
+<script src="js/formulation.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
