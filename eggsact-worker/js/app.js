@@ -20,9 +20,24 @@ point at a DIFFERENT server (e.g. Farm instead of Home) than everyone
 else.
 */
 
-const DEFAULT_SERVER_URL = "http://127.0.0.1:5085";
-const HOUSES = ["House Nketlwane", "House Tsholanang"];
-let SERVER_URL = localStorage.getItem("eggsact_server_url") || DEFAULT_SERVER_URL;
+// The public address of the home PC's sync server.
+// This was "http://127.0.0.1:5085", which means "this phone itself" - so
+// login, sync, master download, messages and team data could never work on
+// any device except the PC running the server. It also has to be https,
+// because a page served over https cannot call an http address.
+const DEFAULT_SERVER_URL = "https://purse-delta-humming.ngrok-free.dev";
+const HOUSES = ["House Nketlwane", "House Tsholanang", "House Judi"];
+// A device that used the broken build has "http://127.0.0.1:5085" saved in
+// localStorage, which would override the fix above and keep it broken after
+// updating. Any saved localhost/http address is discarded once.
+let SERVER_URL = (() => {
+  const saved = localStorage.getItem("eggsact_server_url");
+  if (!saved || /127\.0\.0\.1|localhost|^http:\/\//i.test(saved)) {
+    localStorage.removeItem("eggsact_server_url");
+    return DEFAULT_SERVER_URL;
+  }
+  return saved;
+})();
 
 // Captured as early as possible (before login, before anything) so it's
 // ready to use the instant login succeeds. Chrome/Edge on Android and
@@ -141,16 +156,43 @@ async function renderMyData() {
     }).join("");
   }
 
+  // Full master file, per house. Which houses appear comes from the profile
+  // the SERVER issued at login - and the server re-checks access on every
+  // master_file request, so this list is convenience, not the security.
   const houseAccess = (state.profile && state.profile.house_access) || [];
   const dlEl = $("#mydata-downloads");
   if (houseAccess.length === 0) {
     dlEl.innerHTML = `<p class="dim small">You don't have full access to any house's master file.</p>`;
   } else {
-    dlEl.innerHTML = houseAccess.map((h) =>
-      `<button class="accent mydata-dl-btn" data-house="${h}">Download ${h.replace("House ", "")} master file</button>`
-    ).join("");
+    const masters = await DB.allMasters();
+    const byHouse = {};
+    for (const m of masters) byHouse[m.house] = m;
+    const pending = (await DB.unsyncedEntries());
+    dlEl.innerHTML = houseAccess.map((h) => {
+      const short = h.replace("House ", "");
+      const held = byHouse[h];
+      const mine = pending.filter((e) => e.house === h).length;
+      const when = held
+        ? `Loaded ${timeAgo(held.downloadedAt)} · ${Math.round(held.bytes / 1024)} KB`
+        : `Not loaded on this device yet`;
+      const note = held && mine
+        ? `<span class="dim small">+ ${mine} of your entries not yet synced will be written in</span>`
+        : "";
+      return `
+        <div class="master-card">
+          <div><strong>${short}</strong> <span class="dim small">${when}</span></div>
+          ${note}
+          <div class="master-actions">
+            <button class="accent mydata-dl-btn" data-house="${h}">Load latest</button>
+            <button class="mydata-ex-btn" data-house="${h}" ${held ? "" : "disabled"}>Export full file</button>
+          </div>
+        </div>`;
+    }).join("");
     dlEl.querySelectorAll(".mydata-dl-btn").forEach((btn) => {
-      btn.addEventListener("click", () => downloadMasterFile(btn.dataset.house));
+      btn.addEventListener("click", () => refreshMasterFile(btn.dataset.house));
+    });
+    dlEl.querySelectorAll(".mydata-ex-btn").forEach((btn) => {
+      btn.addEventListener("click", () => handleExportMaster(btn.dataset.house));
     });
   }
 
@@ -399,33 +441,37 @@ async function renderDataSheet() {
   el.innerHTML = html;
 }
 
-async function downloadMasterFile(house) {
+async function refreshMasterFile(house) {
   if (!state.pin) {
-    const pin = prompt(`Re-enter your PIN to download ${house.replace("House ", "")}'s master file:`);
+    const pin = prompt(`Re-enter your PIN to load ${house.replace("House ", "")}'s full data:`);
     if (!pin) return;
     state.pin = pin;
   }
-  flashStatus(`Downloading ${house}…`);
-  try {
-    const url = `${SERVER_URL}/sync/master_file?name=${encodeURIComponent(state.person)}` +
-               `&pin=${encodeURIComponent(state.pin)}&house=${encodeURIComponent(house)}`;
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      const body = await resp.json().catch(() => ({}));
-      state.pin = null;   // wrong/stale PIN - clear it so the next attempt re-prompts instead of repeating the same failure
-      flashStatus(body.error || `Download failed (${resp.status}).`, true);
-      return;
-    }
-    const blob = await resp.blob();
-    const objUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objUrl; a.download = `${house.replace("House ", "")}_master.xlsx`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(objUrl);
-    flashStatus(`Downloaded ${house} master file.`);
-  } catch (e) {
-    flashStatus(`Network error: ${e.message}`, true);
+  flashStatus(`Loading ${house.replace("House ", "")}…`);
+  const result = await refreshMaster(SERVER_URL, house, state.person, state.pin);
+  if (result.status !== "ok") {
+    state.pin = null;   // stale PIN - re-prompt next time instead of failing the same way
+    flashStatus(result.message, true);
+    return;
   }
+  const kb = Math.round(result.bytes / 1024);
+  flashStatus(`${house.replace("House ", "")} loaded (${kb} KB). Export now gives the full file.`);
+  renderMyData();
+}
+
+async function handleExportMaster(house) {
+  flashStatus("Building the master file…");
+  const result = await exportMasterFile(house);
+  if (result.status === "no_master") {
+    flashStatus("Tap 'Load latest' first to get this house's file.", true);
+    return;
+  }
+  let msg = `Master file downloaded (${result.placed} of your entries included).`;
+  if (result.problems.length) {
+    msg += ` ${result.problems.length} couldn't be placed - see the 'Not yet placed' notes.`;
+  }
+  flashStatus(msg);
+  refreshStatus();
 }
 
 function chainEnter(fromId, toId, onLast) {
@@ -652,9 +698,20 @@ async function handleSync() {
 }
 
 async function handleExport() {
+  // Export gives the FULL master file whenever this device holds one for the
+  // current house - that is the whole point of the local-master design.
+  // Without one it falls back to a my-entries-only backup, which is better
+  // than nothing but is clearly labelled as such.
+  const house = $("#house-select").value;
+  const held = await DB.getMaster(house);
+  if (held) return handleExportMaster(house);
   const result = await exportNow();
-  if (result.status === "ok") flashStatus(`Downloaded a backup of ${result.count} entries.`);
-  else flashStatus("Nothing to export yet.");
+  if (result.status === "ok") {
+    flashStatus(`No master file loaded for ${house.replace("House ", "")} - ` +
+                `downloaded your ${result.count} entries only.`);
+  } else {
+    flashStatus("Nothing to export yet.");
+  }
   refreshStatus();
 }
 

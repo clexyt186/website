@@ -291,3 +291,14 @@ header strong { color: var(--accent); margin-right: 8px; }
   flex: none;
 }
 
+
+.master-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: rgba(0, 229, 199, 0.04);
+}
+.master-actions { display: flex; gap: 8px; margin-top: 8px; }
+.master-actions button { flex: 1; padding: 9px 10px; font-size: 13px; margin: 0; }
+.master-actions button[disabled] { opacity: 0.4; cursor: default; }
