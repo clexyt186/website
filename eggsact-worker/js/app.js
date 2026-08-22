@@ -113,6 +113,7 @@ function logout() {
 
 // ---------------------------------------------------------------- capture screen + tabs
 function showCapture() {
+  wireNumericFields();
   $("#login-screen").classList.add("hidden");
   $("#capture-screen").classList.remove("hidden");
   $("#who").textContent = state.person;
@@ -572,7 +573,7 @@ async function saveFeed() {
   }
   await DB.addEntry({
     type: "feed", house, date: dateVal, pen,
-    orts: Number(orts), capturedBy: state.person,
+    orts: parseNum(orts), capturedBy: state.person,
   });
   flashStatus(`Saved pen ${pen} orts.`);
   pens.feed = pen + 1;
@@ -612,7 +613,7 @@ async function saveBodyWeight() {
   }
   await DB.addEntry({
     type: "bodyweight", house, date: dateVal,
-    pen, hen, weight: Number(weight), capturedBy: state.person,
+    pen, hen, weight: parseNum(weight), capturedBy: state.person,
   });
   flashStatus(`Saved pen ${pen} hen ${hen}.`);
   $("#bw-weight").value = "";
@@ -657,9 +658,46 @@ async function saveEggQuality() {
   afterSave();
 }
 
+/**
+ * Reads a numeric field, accepting a COMMA as the decimal point.
+ *
+ * The fields were type="number", which on most Android keyboards silently
+ * discards a comma - so "29,5" arrived as blank or 295 depending on the
+ * phone. They are now type="text" with inputmode="decimal", which shows the
+ * same numeric keypad but lets the character through, and it is normalised
+ * here. Matches autocorrect.py's fix_number() on the desktop, so "29,5"
+ * means 29.5 on both.
+ */
+function parseNum(raw) {
+  if (raw === null || raw === undefined) return null;
+  let s = String(raw).trim();
+  if (s === "") return null;
+  s = s.replace(/,/g, ".");        // 29,5 -> 29.5
+  s = s.replace(/\.{2,}/g, ".");   // 2..3 -> 2.3
+  s = s.replace(/\s+/g, "");
+  s = s.replace(/[^0-9.\-]/g, "");
+  if ((s.match(/\./g) || []).length > 1) return NaN;   // 1.2.3 - ambiguous
+  if (s === "" || s === "-" || s === ".") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 function numOrNull(id) {
-  const v = $(id).value;
-  return v === "" ? null : Number(v);
+  return parseNum($(id).value);
+}
+
+/** Rewrites a comma to a dot as the person types, so the field shows what
+ *  will actually be saved rather than correcting it silently on submit. */
+function wireNumericFields() {
+  document.querySelectorAll("input.numeric").forEach((el) => {
+    el.addEventListener("input", () => {
+      if (el.value.includes(",")) {
+        const at = el.selectionStart;
+        el.value = el.value.replace(/,/g, ".");
+        try { el.setSelectionRange(at, at); } catch (e) {}
+      }
+    });
+  });
 }
 
 // ---------------------------------------------------------------- status / sync / export

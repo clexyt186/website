@@ -9,7 +9,7 @@ Bump CACHE_NAME when you change any cached file, so returning users get
 the update instead of a stale cached copy.
 */
 
-const CACHE_NAME = "eggsact-worker-v3";
+const CACHE_NAME = "eggsact-worker-v4";
 const SHELL_FILES = [
   "./",
   "./index.html",

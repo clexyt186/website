@@ -1,11 +1,4 @@
-Copy icon-192.png and icon-512.png from your CURRENT eggsact-worker/icons
-folder into this folder, then delete this text file.
-
-They are not in this zip because they are your own artwork - I never had
-copies of them. manifest.json still points at:
-
-    icons/icon-192.png
-    icons/icon-512.png
-
-If they are missing the app still runs and still works offline; only the
-installed home-screen icon is affected.
+Copy icon-192.png and icon-512.png from your current eggsact-worker/icons
+folder into this one, then delete this file. They are your own artwork so
+they were never in my copy. Without them the app still runs and still works
+offline; only the home-screen icon is affected.
