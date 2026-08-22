@@ -12,7 +12,7 @@ Store layout (all local, never touches the network on its own):
 */
 
 const DB_NAME = "feedalot_worker";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -26,6 +26,12 @@ function openDB() {
       }
       if (!db.objectStoreNames.contains("meta")) {
         db.createObjectStore("meta", { keyPath: "key" });
+      }
+      // v2: the group master file, stored as the RAW bytes the server sent.
+      // Never parsed, never rebuilt - so all 65 merged ranges and the 211
+      // feed-ledger formulas survive untouched.
+      if (!db.objectStoreNames.contains("masters")) {
+        db.createObjectStore("masters", { keyPath: "group" });
       }
     };
     req.onsuccess = (e) => resolve(e.target.result);
@@ -87,6 +93,29 @@ const DB = {
       };
     }
     return new Promise((resolve) => { tx.oncomplete = () => resolve(); });
+  },
+
+  async putMaster(group, arrayBuffer) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("masters", "readwrite");
+      tx.objectStore("masters").put({
+        group, data: arrayBuffer,
+        downloadedAt: new Date().toISOString(), bytes: arrayBuffer.byteLength,
+      });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
+  async getMaster(group) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("masters", "readonly");
+      const req = tx.objectStore("masters").get(group);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
   },
 
   async setMeta(key, value) {

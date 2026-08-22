@@ -240,15 +240,33 @@ async function handleSync() {
 }
 
 async function handleExport() {
+  // The FULL group file whenever this device holds one - that is the point
+  // of Refresh. Without one it falls back to a my-entries-only file, which
+  // is clearly labelled as such rather than pretending to be the master.
+  const held = await DB.getMaster(state.group);
+  if (held) {
+    flashStatus("Building the group file…");
+    const built = await buildGroupExport(state.group);
+    const url = URL.createObjectURL(built.blob);
+    const a2 = document.createElement("a");
+    a2.href = url; a2.download = built.filename;
+    document.body.appendChild(a2); a2.click(); a2.remove();
+    URL.revokeObjectURL(url);
+    let msg = `Group file downloaded (${built.placed} of your entries written in).`;
+    if (built.problems.length) msg += ` ${built.problems.length} couldn't be placed.`;
+    flashStatus(msg);
+    return;
+  }
   const all = await DB.allEntries();
   if (all.length === 0) { flashStatus("Nothing to export yet."); return; }
   const blob = buildWorkbookBlob(all, XLSX);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = `feedalot_export_${today()}.xlsx`;
+  a.href = url; a.download = `feedalot_my_entries_${today()}.xlsx`;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
-  flashStatus(`Downloaded a backup of ${all.length} entries.`);
+  flashStatus(`No group file loaded yet - downloaded your ${all.length} entries only. ` +
+              `Use "Refresh full group data" in My Data to get the real file.`);
 }
 
 function saveServerUrl() {
@@ -351,21 +369,30 @@ async function handleRefreshGroup() {
   $("#refresh-status").textContent = "Downloading…";
   try {
     const url = `${SERVER_URL}/feedlot/sync/group_file?group=${encodeURIComponent(state.group)}&password=${encodeURIComponent(state.password)}`;
-    const resp = await fetch(url);
+    const resp = await fetch(url, { headers: { "ngrok-skip-browser-warning": "true" } });
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
       $("#refresh-status").textContent = body.error || `Failed (${resp.status}).`;
       $("#refresh-group-btn").disabled = false;
       return;
     }
-    const blob = await resp.blob();
-    const objUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objUrl; a.download = `${state.group.replace(/\s+/g, "_")}_current.xlsx`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(objUrl);
+    // STORE it rather than dumping it straight into Downloads. Keeping the
+    // raw bytes is what lets Export hand back a real, complete group file
+    // later - with this phone's own entries written into it - and it works
+    // offline from then on.
+    const buf = await resp.arrayBuffer();
+    if (!buf || buf.byteLength < 1000) {
+      $("#refresh-status").textContent = "The server sent an empty or unreadable file.";
+      $("#refresh-group-btn").disabled = false;
+      return;
+    }
+    await DB.putMaster(state.group, buf);
     localStorage.setItem("feedalot_last_refresh", new Date().toISOString());
-    $("#refresh-status").textContent = "Downloaded just now - includes everyone's synced data as of right now.";
+    const kb = Math.round(buf.byteLength / 1024);
+    $("#refresh-status").textContent =
+      `Loaded (${kb} KB) - includes everyone's synced data as of now. ` +
+      `Export now gives you this whole file.`;
+    refreshStatus();
   } catch (e) {
     $("#refresh-status").textContent = `Network error: ${e.message}`;
   }
