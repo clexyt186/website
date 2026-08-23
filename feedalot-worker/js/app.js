@@ -9,7 +9,7 @@ tunnel, shared Flask process) - FeedAlot's routes just live under
 const DEFAULT_SERVER_URL = "https://purse-delta-humming.ngrok-free.dev";
 let SERVER_URL = localStorage.getItem("feedalot_server_url") || DEFAULT_SERVER_URL;
 
-let state = { group: null, name: null, password: null };
+let state = { group: null, name: null, password: null, demo: false };
 
 function $(sel) { return document.querySelector(sel); }
 function today() { return new Date().toISOString().slice(0, 10); }

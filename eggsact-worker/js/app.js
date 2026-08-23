@@ -30,6 +30,7 @@ const HOUSES = ["House Nketlwane", "House Tsholanang", "House Judi"];
 // A device that used the broken build has "http://127.0.0.1:5085" saved in
 // localStorage, which would override the fix above and keep it broken after
 // updating. Any saved localhost/http address is discarded once.
+const REAL_FETCH = window.fetch.bind(window);
 let SERVER_URL = (() => {
   const saved = localStorage.getItem("eggsact_server_url");
   if (!saved || /127\.0\.0\.1|localhost|^http:\/\//i.test(saved)) {
@@ -50,7 +51,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
 });
 const BACKUP_REMINDER_MINUTES = Number(localStorage.getItem("eggsact_reminder_minutes") || 40);
 
-let state = { person: null, pin: null, profile: null, house: HOUSES[0] };
+let state = { person: null, pin: null, profile: null, house: HOUSES[0], demo: false };
 let pens = { egg: 1, feed: 1, mortality: 1, bodyweight: 1 };
 let bwHenIndex = 0;
 const HEN_LETTERS = ["A", "B", "C", "D", "E", "F", "G"];
@@ -77,6 +78,36 @@ function showLogin() {
   $("#login-screen").classList.remove("hidden");
   $("#capture-screen").classList.add("hidden");
   $("#login-name").focus();
+  // Demo button - added once, on the login screen only, so a person browsing
+  // the app can see what the interface looks like without an account.
+  // Everything past this button is view-only: forms render, tabs switch, but
+  // no fetch runs and nothing is written to IndexedDB. See enterDemo() below.
+  if (!$("#demo-btn")) {
+    const btn = document.createElement("button");
+    btn.id = "demo-btn";
+    btn.className = "text-btn";
+    btn.style.cssText = "margin-top:10px;color:#7fb3ff;font-size:13px";
+    btn.textContent = "Try a demo (no account, nothing saved)";
+    btn.addEventListener("click", enterDemo);
+    $("#login-status").after(btn);
+  }
+}
+
+function enterDemo() {
+  state.person = "Demo user";
+  state.pin = null;
+  state.profile = { forms: ["egg","feed","mortality","bodyweight","eggquality"],
+                    house_access: HOUSES.slice(), recent_days: 30, is_main_admin: false };
+  state.demo = true;
+  localStorage.removeItem("eggsact_person");   // never persist demo state
+  localStorage.removeItem("eggsact_profile");
+  showCapture();
+  flashStatus("Demo mode - nothing you type here is saved or sent.");
+  const banner = document.createElement("div");
+  banner.id = "demo-banner";
+  banner.style.cssText = "background:#5a3a1a;color:#ffd8a0;text-align:center;padding:6px;font-size:12px;font-weight:600";
+  banner.textContent = "DEMO MODE - browse the app, nothing is saved. Sign out to leave.";
+  $("#capture-screen").prepend(banner);
 }
 async function doLogin() {
   const name = $("#login-name").value.trim();
@@ -104,6 +135,10 @@ async function doLogin() {
   }
 }
 function logout() {
+  // Demo cleanup - drop the banner and the fake profile before showing login
+  const banner = document.getElementById("demo-banner");
+  if (banner) banner.remove();
+  state.demo = false;
   localStorage.removeItem("eggsact_person");
   localStorage.removeItem("eggsact_profile");
   state.person = null; state.pin = null; state.profile = null;
