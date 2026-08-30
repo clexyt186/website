@@ -20,7 +20,7 @@ function initLogin() {
   const savedName = localStorage.getItem("feedalot_name");
   const savedPw = localStorage.getItem("feedalot_pw");
   if (savedGroup && savedName && savedPw) {
-    state = { group: savedGroup, name: savedName, password: savedPw };
+    state = { group: savedGroup, name: savedName, password: savedPw, demo: false };
     showCapture();
     return;
   }
@@ -31,6 +31,7 @@ function showLogin() {
   $("#login-screen").classList.remove("hidden");
   $("#capture-screen").classList.add("hidden");
   $("#login-name").focus();
+  addDemoButton();
 }
 
 // Group passwords - same list as FeedAlot's config.json. Checked locally,
@@ -50,7 +51,7 @@ function doLogin() {
     $("#login-status").textContent = "Wrong password for this group.";
     return;
   }
-  state = { group, name, password: pw };
+  state = { group, name, password: pw, demo: false };
   localStorage.setItem("feedalot_group", group);
   localStorage.setItem("feedalot_name", name);
   localStorage.setItem("feedalot_pw", pw);
@@ -61,7 +62,8 @@ function logout() {
   localStorage.removeItem("feedalot_group");
   localStorage.removeItem("feedalot_name");
   localStorage.removeItem("feedalot_pw");
-  state = { group: null, name: null, password: null };
+  const _dm = document.getElementById("demo-banner"); if (_dm) _dm.remove();
+  state = { group: null, name: null, password: null, demo: false };
   showLogin();
 }
 
@@ -551,5 +553,35 @@ async function emergencyDump() {
     flashStatus(`Downloaded ${all.length} entries. Send that file to the master PC.`);
   } catch (e) {
     flashStatus(`Recovery failed: ${e.message}`);
+  }
+}
+
+/* ---------------------------------------------------------------- demo mode
+   Login-screen button that lets someone browse the app with no account.  */
+function addDemoButton() {
+  if (document.getElementById("demo-btn")) return;
+  const host = document.getElementById("login-status") || document.getElementById("login-screen");
+  if (!host) return;
+  const btn = document.createElement("button");
+  btn.id = "demo-btn";
+  btn.type = "button";
+  btn.textContent = "Try a demo (no account, nothing saved)";
+  btn.style.cssText = "display:block;margin:14px auto 0;padding:8px 14px;background:transparent;border:1px solid #7fb3ff;color:#7fb3ff;border-radius:8px;font-size:13px;cursor:pointer";
+  btn.addEventListener("click", enterDemo);
+  host.parentNode.insertBefore(btn, host.nextSibling);
+}
+function enterDemo() {
+  state = { group: "Group 5 - Merino Mob", name: "Demo user", password: null, demo: true };
+  localStorage.removeItem("feedalot_group");
+  localStorage.removeItem("feedalot_name");
+  localStorage.removeItem("feedalot_pw");
+  showCapture();
+  if (typeof flashStatus === "function") flashStatus("Demo mode - nothing you type here is saved or sent.");
+  if (!document.getElementById("demo-banner")) {
+    const b = document.createElement("div");
+    b.id = "demo-banner";
+    b.style.cssText = "background:#5a3a1a;color:#ffd8a0;text-align:center;padding:6px;font-size:12px;font-weight:600";
+    b.textContent = "DEMO MODE - browse the app, nothing is saved. Sign out to leave.";
+    document.getElementById("capture-screen").prepend(b);
   }
 }

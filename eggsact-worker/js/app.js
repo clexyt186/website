@@ -50,7 +50,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
 });
 const BACKUP_REMINDER_MINUTES = Number(localStorage.getItem("eggsact_reminder_minutes") || 40);
 
-let state = { person: null, pin: null, profile: null, house: HOUSES[0] };
+let state = { person: null, pin: null, profile: null, house: HOUSES[0], demo: false };
 let pens = { egg: 1, feed: 1, mortality: 1, bodyweight: 1 };
 let bwHenIndex = 0;
 const HEN_LETTERS = ["A", "B", "C", "D", "E", "F", "G"];
@@ -77,6 +77,7 @@ function showLogin() {
   $("#login-screen").classList.remove("hidden");
   $("#capture-screen").classList.add("hidden");
   $("#login-name").focus();
+  addDemoButton();
 }
 async function doLogin() {
   const name = $("#login-name").value.trim();
@@ -104,6 +105,8 @@ async function doLogin() {
   }
 }
 function logout() {
+  const _dm = document.getElementById("demo-banner"); if (_dm) _dm.remove();
+  state.demo = false;
   localStorage.removeItem("eggsact_person");
   localStorage.removeItem("eggsact_profile");
   state.person = null; state.pin = null; state.profile = null;
@@ -969,5 +972,41 @@ async function emergencyDump() {
     flashStatus(`Downloaded ${all.length} entries. Send that file to the master PC.`);
   } catch (e) {
     flashStatus(`Recovery failed: ${e.message}`);
+  }
+}
+
+/* ---------------------------------------------------------------- demo mode
+   Login-screen button that lets someone browse the app with no account.
+   Every tab and form is live, but writes are blocked in DB.addEntry() so
+   nothing is saved and no fetch runs. See addDemoButton() below.  */
+function addDemoButton() {
+  if (document.getElementById("demo-btn")) return;
+  const host = document.getElementById("login-status") || document.getElementById("login-screen");
+  if (!host) return;
+  const btn = document.createElement("button");
+  btn.id = "demo-btn";
+  btn.type = "button";
+  btn.textContent = "Try a demo (no account, nothing saved)";
+  btn.style.cssText = "display:block;margin:14px auto 0;padding:8px 14px;background:transparent;border:1px solid #7fb3ff;color:#7fb3ff;border-radius:8px;font-size:13px;cursor:pointer";
+  btn.addEventListener("click", enterDemo);
+  host.parentNode.insertBefore(btn, host.nextSibling);
+}
+function enterDemo() {
+  state.person = "Demo user";
+  state.pin = null;
+  state.profile = { forms: ["egg","feed","mortality","bodyweight","eggquality"],
+                    house_access: (typeof HOUSES !== "undefined" ? HOUSES.slice() : []),
+                    recent_days: 30, is_main_admin: false };
+  state.demo = true;
+  localStorage.removeItem("eggsact_person");
+  localStorage.removeItem("eggsact_profile");
+  showCapture();
+  if (typeof flashStatus === "function") flashStatus("Demo mode - nothing you type here is saved or sent.");
+  if (!document.getElementById("demo-banner")) {
+    const b = document.createElement("div");
+    b.id = "demo-banner";
+    b.style.cssText = "background:#5a3a1a;color:#ffd8a0;text-align:center;padding:6px;font-size:12px;font-weight:600";
+    b.textContent = "DEMO MODE - browse the app, nothing is saved. Sign out to leave.";
+    document.getElementById("capture-screen").prepend(b);
   }
 }
