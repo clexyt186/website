@@ -1,0 +1,46 @@
+CLEVITA FeedAlot - PHONE / WEB APP
+==================================
+
+Rename your current feedalot-worker folder to feedalot-worker-backup, put
+this one in its place, then copy your two icons from the backup into
+icons/ and delete the placeholder there.
+
+THE BIG ONE: EXPORT NOW GIVES YOU THE REAL GROUP FILE
+"Refresh full group data" used to download the file and dump it into your
+Downloads folder - the app kept nothing. So Export gave only what this phone
+had typed, a loose sheet of fragments, while the real file sat somewhere
+else. The obvious button gave the file that wasn't real.
+
+Now: "Load latest group file" STORES it on the device. Export then hands
+back that whole file with this phone's not-yet-synced entries written into
+their correct cells, and it works offline.
+
+Only entries that haven't synced yet are written in - a freshly loaded file
+already contains everything that has, so re-applying them would double-count.
+
+MERGES AND FORMULAS SURVIVE
+Your group workbook has 65 merged ranges (43 in Daily Observations alone) and
+211 live formulas in the feed-stock ledger. Rebuilding it with SheetJS
+destroys all of that. js/xlsx-patch.js edits individual cells inside the
+.xlsx zip and leaves every other byte alone. Verified on the real Group 5
+file: 65 merges and 211 formulas before, 65 and 211 after.
+
+BLOCK BOUNDARIES
+The weighing sheet stacks blocks with the same sheep IDs in each. Every
+lookup stops at its block's last row, so a weight can't land in the ADG
+table. A sheep or date not in the file is reported, never invented.
+
+COMMAS
+numeric_input.js used String.replace with a plain string, which swaps only
+the FIRST match - "1,234,5" became "1.234,5" and then NaN. Fixed to replace
+all. Tested: 32,5 -> 32.5   1,234 -> 1.234   " 8,25 " -> 8.25
+
+SERVICE WORKER
+Bumped to v2 and switched to network-first, so a phone that already installed
+the app actually picks up this update instead of staying on the old build
+indefinitely. Server responses are never cached - a stale group file would be
+worse than none.
+
+SERVER ADDRESS
+Already correct in your build - it points at the shared ngrok domain and
+calls /feedlot/*, so it uses the same tunnel as EGGSACT. Nothing to change.

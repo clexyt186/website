@@ -62,23 +62,23 @@
     <h2>Daily Eggs</h2>
     <div class="row">
       <label for="f-pen">Pen</label>
-      <input id="f-pen" type="number" inputmode="numeric">
+      <input id="f-pen" type="text" inputmode="numeric" class="numeric">
     </div>
     <div class="row">
       <label for="f-eggs">Number of Eggs</label>
-      <input id="f-eggs" type="number" inputmode="numeric">
+      <input id="f-eggs" type="text" inputmode="numeric" class="numeric">
     </div>
     <div class="row">
       <label for="f-weight">Weight</label>
-      <input id="f-weight" type="number" inputmode="decimal" step="0.01">
+      <input id="f-weight" type="text" inputmode="decimal" class="numeric">
     </div>
     <div class="row">
       <label for="f-nonlayer">Non Layer</label>
-      <input id="f-nonlayer" type="number" inputmode="numeric">
+      <input id="f-nonlayer" type="text" inputmode="numeric" class="numeric">
     </div>
     <div class="row">
       <label for="f-rejects">Number of Rejects</label>
-      <input id="f-rejects" type="number" inputmode="numeric">
+      <input id="f-rejects" type="text" inputmode="numeric" class="numeric">
     </div>
     <div class="row">
       <label for="f-reason">Reason</label>
@@ -92,11 +92,11 @@
     <h2>Feed Orts</h2>
     <div class="row">
       <label for="feed-pen">Pen</label>
-      <input id="feed-pen" type="number" inputmode="numeric">
+      <input id="feed-pen" type="text" inputmode="numeric" class="numeric">
     </div>
     <div class="row">
       <label for="feed-orts">Feed Orts (kg)</label>
-      <input id="feed-orts" type="number" inputmode="decimal" step="0.01">
+      <input id="feed-orts" type="text" inputmode="decimal" class="numeric">
     </div>
     <button id="save-feed-btn" class="primary big">SAVE (Enter)</button>
     <p class="dim small">Bird # and Allocation aren't captured here - the master keeps those
@@ -107,11 +107,11 @@
     <h2>Mortality / Cull</h2>
     <div class="row">
       <label for="mort-pen">Pen</label>
-      <input id="mort-pen" type="number" inputmode="numeric">
+      <input id="mort-pen" type="text" inputmode="numeric" class="numeric">
     </div>
     <div class="row">
       <label for="mort-weight">Weight (optional)</label>
-      <input id="mort-weight" type="number" inputmode="decimal" step="0.01">
+      <input id="mort-weight" type="text" inputmode="decimal" class="numeric">
     </div>
     <div class="row">
       <label for="mort-reason">Reason</label>
@@ -124,7 +124,7 @@
     <h2>Body Weight</h2>
     <div class="row">
       <label for="bw-pen">Pen</label>
-      <input id="bw-pen" type="number" inputmode="numeric">
+      <input id="bw-pen" type="text" inputmode="numeric" class="numeric">
     </div>
     <div class="row">
       <label for="bw-hen">Hen</label>
@@ -135,7 +135,7 @@
     </div>
     <div class="row">
       <label for="bw-weight">Weight</label>
-      <input id="bw-weight" type="number" inputmode="decimal" step="0.01">
+      <input id="bw-weight" type="text" inputmode="decimal" class="numeric">
     </div>
     <button id="save-bw-btn" class="primary big">SAVE (Enter)</button>
     <p class="dim small">Saving jumps to the next hen automatically, then the next pen.</p>
@@ -145,39 +145,39 @@
     <h2>Egg Quality</h2>
     <div class="row">
       <label for="eq-egg">Egg Number</label>
-      <input id="eq-egg" type="number" inputmode="numeric">
+      <input id="eq-egg" type="text" inputmode="numeric" class="numeric">
     </div>
     <div class="row">
       <label for="eq-diameter">Diameter</label>
-      <input id="eq-diameter" type="number" inputmode="decimal" step="0.01">
+      <input id="eq-diameter" type="text" inputmode="decimal" class="numeric">
     </div>
     <div class="row">
       <label for="eq-height">Height</label>
-      <input id="eq-height" type="number" inputmode="decimal" step="0.01">
+      <input id="eq-height" type="text" inputmode="decimal" class="numeric">
     </div>
     <div class="row">
       <label for="eq-top">Top</label>
-      <input id="eq-top" type="number" inputmode="decimal" step="0.0001">
+      <input id="eq-top" type="text" inputmode="decimal" class="numeric">
     </div>
     <div class="row">
       <label for="eq-bottom">Bottom</label>
-      <input id="eq-bottom" type="number" inputmode="decimal" step="0.0001">
+      <input id="eq-bottom" type="text" inputmode="decimal" class="numeric">
     </div>
     <div class="row">
       <label for="eq-equater">Equater</label>
-      <input id="eq-equater" type="number" inputmode="decimal" step="0.0001">
+      <input id="eq-equater" type="text" inputmode="decimal" class="numeric">
     </div>
     <div class="row">
       <label for="eq-force">Force at Break [N]</label>
-      <input id="eq-force" type="number" inputmode="decimal" step="0.01">
+      <input id="eq-force" type="text" inputmode="decimal" class="numeric">
     </div>
     <div class="row">
       <label for="eq-displacement">Displacement at Break [mm]</label>
-      <input id="eq-displacement" type="number" inputmode="decimal" step="0.01">
+      <input id="eq-displacement" type="text" inputmode="decimal" class="numeric">
     </div>
     <div class="row">
       <label for="eq-eggweight">Individual Egg Weight</label>
-      <input id="eq-eggweight" type="number" inputmode="decimal" step="0.01">
+      <input id="eq-eggweight" type="text" inputmode="decimal" class="numeric">
     </div>
     <button id="save-eq-btn" class="primary big">SAVE (Enter)</button>
     <p class="dim small">Enter moves through the fields; saving jumps to the next egg number.</p>
@@ -204,7 +204,10 @@
     <div id="mydata-sheet"></div>
 
     <h2 style="margin-top:20px">Full Master File</h2>
-    <p class="dim small">Only shows for houses you've been given full access to.</p>
+    <p class="dim small">Only shows for houses you've been given full access to.
+      "Load latest" pulls the current file from the home PC onto this device.
+      "Export full file" then gives you that whole file - with your own
+      not-yet-synced entries written into it - and it works offline.</p>
     <div id="mydata-downloads"></div>
 
     <div id="mydata-team-section" class="hidden">
@@ -231,7 +234,7 @@
 
   <div class="action-row">
     <button id="sync-btn" class="accent">Sync</button>
-    <button id="export-btn">Export</button>
+    <button id="export-btn">Export file</button>
     <button id="settings-btn" class="text-btn">Settings</button>
     <button id="install-btn" class="text-btn">Install app</button>
   </div>
@@ -260,7 +263,10 @@
 </div>
 
 <script src="js/vendor/xlsx.full.min.js"></script>
+<script src="js/vendor/fflate.min.js"></script>
 <script src="js/db.js"></script>
+<script src="js/xlsx-patch.js"></script>
+<script src="js/master.js"></script>
 <script src="js/xlsx-export.js"></script>
 <script src="js/autocorrect.js"></script>
 <script src="js/sync.js"></script>

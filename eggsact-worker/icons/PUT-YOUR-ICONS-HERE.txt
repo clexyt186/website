@@ -1,0 +1,4 @@
+Copy icon-192.png and icon-512.png from your current eggsact-worker/icons
+folder into this one, then delete this file. They are your own artwork so
+they were never in my copy. Without them the app still runs and still works
+offline; only the home-screen icon is affected.

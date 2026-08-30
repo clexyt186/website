@@ -60,6 +60,7 @@
     <button class="tab-btn" data-tab="sick">Sick</button>
     <button class="tab-btn" data-tab="formulation">Ration</button>
     <button class="tab-btn" data-tab="mydata">My Data</button>
+    <button class="tab-btn" data-tab="scanner">Scanner</button>
   </div>
 
   <div class="card tab-panel" id="tab-processing">
@@ -151,22 +152,32 @@
     <p class="dim small" style="margin-top:10px">Feed stock's running balance (what's left) is calculated once these sync to the master file - the exact number isn't something this phone can know on its own, since it depends on everything captured before it, on every device.</p>
 
     <h2 style="margin-top:20px">Full Group Data</h2>
-    <p class="dim small">Your own captures above are local to this phone only - this pulls the REAL, current combined file, including what everyone else in your group has already synced.</p>
-    <button id="refresh-group-btn" class="accent">Refresh full group data</button>
+    <p class="dim small">Pulls the REAL, current combined file - everything everyone in your group has synced - and keeps it on this device. After that, <strong>Export</strong> gives you that whole file with your own not-yet-synced entries already written into it, and it works offline.</p>
+    <button id="refresh-group-btn" class="accent">Load latest group file</button>
     <p id="refresh-status" class="dim small"></p>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-scanner">
+    <h2>Scanner Import</h2>
+    <p class="dim small">Pick the XR5000 export file straight from your phone or laptop - matches each reading to a sheep by ID and queues it as a weighing entry, same as typing it in by hand. Works fully offline; syncs later like anything else.</p>
+    <input id="scanner-file" type="file" accept=".xlsx">
+    <div id="scanner-result" style="margin-top:12px"></div>
   </div>
 
   <div id="flash" class="flash"></div>
 
   <div class="action-row">
     <button id="sync-btn" class="accent">Sync</button>
-    <button id="export-btn">Export</button>
+    <button id="export-btn">Export file</button>
     <button id="settings-btn" class="text-btn">Settings</button>
   </div>
 </div>
 
 <script src="js/vendor/xlsx.full.min.js"></script>
+<script src="js/vendor/fflate.min.js"></script>
 <script src="js/db.js"></script>
+<script src="js/xlsx-patch.js"></script>
+<script src="js/master.js"></script>
 <script src="js/xlsx-export.js"></script>
 <script src="js/numeric_input.js"></script>
 <script src="js/formulation.js"></script>

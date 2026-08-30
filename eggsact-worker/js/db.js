@@ -12,7 +12,7 @@ Store layout (all local, never touches the network on its own):
 */
 
 const DB_NAME = "eggsact_worker";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -26,6 +26,13 @@ function openDB() {
       }
       if (!db.objectStoreNames.contains("meta")) {
         db.createObjectStore("meta", { keyPath: "key" });
+      }
+      // v2: the house master file, stored as the RAW bytes exactly as the
+      // home PC served them. Never parsed, never rewritten - so every
+      // formula, rollup and FCR link survives untouched. Export hands these
+      // bytes straight back.
+      if (!db.objectStoreNames.contains("masters")) {
+        db.createObjectStore("masters", { keyPath: "house" });
       }
     };
     req.onsuccess = (e) => resolve(e.target.result);
@@ -87,6 +94,42 @@ const DB = {
       };
     }
     return new Promise((resolve) => { tx.oncomplete = () => resolve(); });
+  },
+
+  // ------------------------------------------------------------ masters
+  async putMaster(house, arrayBuffer) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("masters", "readwrite");
+      tx.objectStore("masters").put({
+        house,
+        data: arrayBuffer,
+        downloadedAt: new Date().toISOString(),
+        bytes: arrayBuffer.byteLength,
+      });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
+  async getMaster(house) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("masters", "readonly");
+      const req = tx.objectStore("masters").get(house);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async allMasters() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("masters", "readonly");
+      const req = tx.objectStore("masters").getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
   },
 
   async setMeta(key, value) {
