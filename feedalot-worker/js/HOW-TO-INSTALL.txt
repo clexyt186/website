@@ -1,0 +1,19 @@
+FeedAlot worker - install
+=========================
+
+1. Copy both files into feedalot-worker/js/, replacing app.js:
+     js/app.js         REPLACES the existing one
+     js/templates.js   NEW - Group 5 template baked in
+
+2. Edit feedalot-worker/index.html: find the line that loads app.js:
+     <script src="js/app.js"></script>
+   Add ONE line ABOVE it:
+     <script src="js/templates.js"></script>
+     <script src="js/app.js"></script>
+
+3. Save. Deploy. Everyone opens it once, service worker updates them.
+
+WHAT'S NEW
+  - Group 5's real workbook baked in as the template. On install every
+    group's file starts from that layout.
+  - "Recover all data" button and demo button, same as EGGSACT.

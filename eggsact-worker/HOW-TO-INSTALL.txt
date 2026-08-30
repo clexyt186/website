@@ -1,0 +1,27 @@
+EGGSACT worker - install
+========================
+
+1. Copy both files into eggsact-worker/js/, replacing app.js:
+     js/app.js         REPLACES the existing one
+     js/templates.js   NEW - blank house workbooks baked in
+
+2. Edit eggsact-worker/index.html: find the line that loads app.js:
+     <script src="js/app.js"></script>
+   Add ONE line ABOVE it:
+     <script src="js/templates.js"></script>
+     <script src="js/app.js"></script>
+
+3. Save. Deploy the site. Everyone opens it once - the service worker's
+   network-first, so they pick up the new files automatically.
+
+WHAT'S NEW
+  - Blank House Nketlwane and House Tsholanang workbooks baked into the app.
+    On install, if no master file has been loaded yet, the template is used
+    - so a phone shows the real layout with zero server calls.
+  - "Load latest group file" (when Sync works) replaces the template with
+    the master's actual file including everyone else's synced data.
+  - "Recover all data" button - dumps every captured entry from this phone
+    as a JSON file. Send that file to the master PC and run
+    import_phone_dump.py on it. This is the way to get data OFF a phone
+    when Sync is broken.
+  - Demo button on the login screen.

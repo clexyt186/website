@@ -20,9 +20,24 @@ point at a DIFFERENT server (e.g. Farm instead of Home) than everyone
 else.
 */
 
-const DEFAULT_SERVER_URL = "http://127.0.0.1:5085";
-const HOUSES = ["House Nketlwane", "House Tsholanang"];
-let SERVER_URL = localStorage.getItem("eggsact_server_url") || DEFAULT_SERVER_URL;
+// The public address of the home PC's sync server.
+// This was "http://127.0.0.1:5085", which means "this phone itself" - so
+// login, sync, master download, messages and team data could never work on
+// any device except the PC running the server. It also has to be https,
+// because a page served over https cannot call an http address.
+const DEFAULT_SERVER_URL = "https://purse-delta-humming.ngrok-free.dev";
+const HOUSES = ["House Nketlwane", "House Tsholanang", "House Judi"];
+// A device that used the broken build has "http://127.0.0.1:5085" saved in
+// localStorage, which would override the fix above and keep it broken after
+// updating. Any saved localhost/http address is discarded once.
+let SERVER_URL = (() => {
+  const saved = localStorage.getItem("eggsact_server_url");
+  if (!saved || /127\.0\.0\.1|localhost|^http:\/\//i.test(saved)) {
+    localStorage.removeItem("eggsact_server_url");
+    return DEFAULT_SERVER_URL;
+  }
+  return saved;
+})();
 
 // Captured as early as possible (before login, before anything) so it's
 // ready to use the instant login succeeds. Chrome/Edge on Android and
@@ -98,6 +113,12 @@ function logout() {
 
 // ---------------------------------------------------------------- capture screen + tabs
 function showCapture() {
+  // Install embedded templates for houses this user has access to, so a
+  // real layout exists on this device from install - no server call needed.
+  if (typeof ensureTemplatesInstalled === "function" && state.profile) {
+    ensureTemplatesInstalled(state.profile.house_access || []).catch(() => {});
+  }
+  wireNumericFields();
   $("#login-screen").classList.add("hidden");
   $("#capture-screen").classList.remove("hidden");
   $("#who").textContent = state.person;
@@ -141,16 +162,43 @@ async function renderMyData() {
     }).join("");
   }
 
+  // Full master file, per house. Which houses appear comes from the profile
+  // the SERVER issued at login - and the server re-checks access on every
+  // master_file request, so this list is convenience, not the security.
   const houseAccess = (state.profile && state.profile.house_access) || [];
   const dlEl = $("#mydata-downloads");
   if (houseAccess.length === 0) {
     dlEl.innerHTML = `<p class="dim small">You don't have full access to any house's master file.</p>`;
   } else {
-    dlEl.innerHTML = houseAccess.map((h) =>
-      `<button class="accent mydata-dl-btn" data-house="${h}">Download ${h.replace("House ", "")} master file</button>`
-    ).join("");
+    const masters = await DB.allMasters();
+    const byHouse = {};
+    for (const m of masters) byHouse[m.house] = m;
+    const pending = (await DB.unsyncedEntries());
+    dlEl.innerHTML = houseAccess.map((h) => {
+      const short = h.replace("House ", "");
+      const held = byHouse[h];
+      const mine = pending.filter((e) => e.house === h).length;
+      const when = held
+        ? `Loaded ${timeAgo(held.downloadedAt)} · ${Math.round(held.bytes / 1024)} KB`
+        : `Not loaded on this device yet`;
+      const note = held && mine
+        ? `<span class="dim small">+ ${mine} of your entries not yet synced will be written in</span>`
+        : "";
+      return `
+        <div class="master-card">
+          <div><strong>${short}</strong> <span class="dim small">${when}</span></div>
+          ${note}
+          <div class="master-actions">
+            <button class="accent mydata-dl-btn" data-house="${h}">Load latest</button>
+            <button class="mydata-ex-btn" data-house="${h}" ${held ? "" : "disabled"}>Export full file</button>
+          </div>
+        </div>`;
+    }).join("");
     dlEl.querySelectorAll(".mydata-dl-btn").forEach((btn) => {
-      btn.addEventListener("click", () => downloadMasterFile(btn.dataset.house));
+      btn.addEventListener("click", () => refreshMasterFile(btn.dataset.house));
+    });
+    dlEl.querySelectorAll(".mydata-ex-btn").forEach((btn) => {
+      btn.addEventListener("click", () => handleExportMaster(btn.dataset.house));
     });
   }
 
@@ -399,33 +447,37 @@ async function renderDataSheet() {
   el.innerHTML = html;
 }
 
-async function downloadMasterFile(house) {
+async function refreshMasterFile(house) {
   if (!state.pin) {
-    const pin = prompt(`Re-enter your PIN to download ${house.replace("House ", "")}'s master file:`);
+    const pin = prompt(`Re-enter your PIN to load ${house.replace("House ", "")}'s full data:`);
     if (!pin) return;
     state.pin = pin;
   }
-  flashStatus(`Downloading ${house}…`);
-  try {
-    const url = `${SERVER_URL}/sync/master_file?name=${encodeURIComponent(state.person)}` +
-               `&pin=${encodeURIComponent(state.pin)}&house=${encodeURIComponent(house)}`;
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      const body = await resp.json().catch(() => ({}));
-      state.pin = null;   // wrong/stale PIN - clear it so the next attempt re-prompts instead of repeating the same failure
-      flashStatus(body.error || `Download failed (${resp.status}).`, true);
-      return;
-    }
-    const blob = await resp.blob();
-    const objUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objUrl; a.download = `${house.replace("House ", "")}_master.xlsx`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(objUrl);
-    flashStatus(`Downloaded ${house} master file.`);
-  } catch (e) {
-    flashStatus(`Network error: ${e.message}`, true);
+  flashStatus(`Loading ${house.replace("House ", "")}…`);
+  const result = await refreshMaster(SERVER_URL, house, state.person, state.pin);
+  if (result.status !== "ok") {
+    state.pin = null;   // stale PIN - re-prompt next time instead of failing the same way
+    flashStatus(result.message, true);
+    return;
   }
+  const kb = Math.round(result.bytes / 1024);
+  flashStatus(`${house.replace("House ", "")} loaded (${kb} KB). Export now gives the full file.`);
+  renderMyData();
+}
+
+async function handleExportMaster(house) {
+  flashStatus("Building the master file…");
+  const result = await exportMasterFile(house);
+  if (result.status === "no_master") {
+    flashStatus("Tap 'Load latest' first to get this house's file.", true);
+    return;
+  }
+  let msg = `Master file downloaded (${result.placed} of your entries included).`;
+  if (result.problems.length) {
+    msg += ` ${result.problems.length} couldn't be placed - see the 'Not yet placed' notes.`;
+  }
+  flashStatus(msg);
+  refreshStatus();
 }
 
 function chainEnter(fromId, toId, onLast) {
@@ -526,7 +578,7 @@ async function saveFeed() {
   }
   await DB.addEntry({
     type: "feed", house, date: dateVal, pen,
-    orts: Number(orts), capturedBy: state.person,
+    orts: parseNum(orts), capturedBy: state.person,
   });
   flashStatus(`Saved pen ${pen} orts.`);
   pens.feed = pen + 1;
@@ -566,7 +618,7 @@ async function saveBodyWeight() {
   }
   await DB.addEntry({
     type: "bodyweight", house, date: dateVal,
-    pen, hen, weight: Number(weight), capturedBy: state.person,
+    pen, hen, weight: parseNum(weight), capturedBy: state.person,
   });
   flashStatus(`Saved pen ${pen} hen ${hen}.`);
   $("#bw-weight").value = "";
@@ -611,9 +663,46 @@ async function saveEggQuality() {
   afterSave();
 }
 
+/**
+ * Reads a numeric field, accepting a COMMA as the decimal point.
+ *
+ * The fields were type="number", which on most Android keyboards silently
+ * discards a comma - so "29,5" arrived as blank or 295 depending on the
+ * phone. They are now type="text" with inputmode="decimal", which shows the
+ * same numeric keypad but lets the character through, and it is normalised
+ * here. Matches autocorrect.py's fix_number() on the desktop, so "29,5"
+ * means 29.5 on both.
+ */
+function parseNum(raw) {
+  if (raw === null || raw === undefined) return null;
+  let s = String(raw).trim();
+  if (s === "") return null;
+  s = s.replace(/,/g, ".");        // 29,5 -> 29.5
+  s = s.replace(/\.{2,}/g, ".");   // 2..3 -> 2.3
+  s = s.replace(/\s+/g, "");
+  s = s.replace(/[^0-9.\-]/g, "");
+  if ((s.match(/\./g) || []).length > 1) return NaN;   // 1.2.3 - ambiguous
+  if (s === "" || s === "-" || s === ".") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 function numOrNull(id) {
-  const v = $(id).value;
-  return v === "" ? null : Number(v);
+  return parseNum($(id).value);
+}
+
+/** Rewrites a comma to a dot as the person types, so the field shows what
+ *  will actually be saved rather than correcting it silently on submit. */
+function wireNumericFields() {
+  document.querySelectorAll("input.numeric").forEach((el) => {
+    el.addEventListener("input", () => {
+      if (el.value.includes(",")) {
+        const at = el.selectionStart;
+        el.value = el.value.replace(/,/g, ".");
+        try { el.setSelectionRange(at, at); } catch (e) {}
+      }
+    });
+  });
 }
 
 // ---------------------------------------------------------------- status / sync / export
@@ -652,9 +741,20 @@ async function handleSync() {
 }
 
 async function handleExport() {
+  // Export gives the FULL master file whenever this device holds one for the
+  // current house - that is the whole point of the local-master design.
+  // Without one it falls back to a my-entries-only backup, which is better
+  // than nothing but is clearly labelled as such.
+  const house = $("#house-select").value;
+  const held = await DB.getMaster(house);
+  if (held) return handleExportMaster(house);
   const result = await exportNow();
-  if (result.status === "ok") flashStatus(`Downloaded a backup of ${result.count} entries.`);
-  else flashStatus("Nothing to export yet.");
+  if (result.status === "ok") {
+    flashStatus(`No master file loaded for ${house.replace("House ", "")} - ` +
+                `downloaded your ${result.count} entries only.`);
+  } else {
+    flashStatus("Nothing to export yet.");
+  }
   refreshStatus();
 }
 
@@ -813,6 +913,18 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#save-eq-btn").addEventListener("click", saveEggQuality);
 
   $("#sync-btn").addEventListener("click", handleSync);
+  // Emergency Recovery button - added next to Sync/Export so it's always
+  // reachable even when everything else is broken.
+  if (!document.getElementById("recover-btn") && document.querySelector(".action-row")) {
+    const btn = document.createElement("button");
+    btn.id = "recover-btn";
+    btn.textContent = "Recover all data";
+    btn.style.cssText = "background:#8a3a1a;color:#ffd8a0;border:none;font-weight:600";
+    btn.title = "Download every captured entry from this device as a file. Use when Sync isn't working.";
+    btn.addEventListener("click", emergencyDump);
+    document.querySelector(".action-row").appendChild(btn);
+  }
+
   $("#export-btn").addEventListener("click", handleExport);
   $("#settings-btn").addEventListener("click", saveServerUrl);
   $("#install-btn").addEventListener("click", handleInstallButton);
@@ -826,3 +938,36 @@ document.addEventListener("DOMContentLoaded", () => {
   initLogin();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js").catch(() => {});
 });
+
+/* ---------------------------------------------------------------- emergency recovery
+   Dumps EVERY captured entry from IndexedDB straight to the phone as a JSON
+   file. No server, no permissions, no sync needed - the person taps the
+   button and their browser saves the file. Send it to the master PC and it
+   can be imported back into the ledger.
+
+   This is the ONLY reliable way to get data off a phone whose sync is
+   broken. It always works because it never leaves the device.  */
+async function emergencyDump() {
+  try {
+    const all = await DB.allEntries();
+    if (!all.length) { flashStatus("Nothing captured on this device."); return; }
+    const payload = {
+      app: "eggsact-worker",
+      exported_at: new Date().toISOString(),
+      device: navigator.userAgent,
+      entry_count: all.length,
+      entries: all,
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `eggsact_captures_${new Date().toISOString().slice(0,10)}_${all.length}entries.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    flashStatus(`Downloaded ${all.length} entries. Send that file to the master PC.`);
+  } catch (e) {
+    flashStatus(`Recovery failed: ${e.message}`);
+  }
+}

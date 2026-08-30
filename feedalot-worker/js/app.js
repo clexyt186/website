@@ -67,6 +67,11 @@ function logout() {
 
 // ---------------------------------------------------------------- capture screen
 function showCapture() {
+  // Install the embedded template for this group so a real layout exists on
+  // this device from install - no server call needed.
+  if (typeof ensureFeedalotTemplate === "function" && state.group) {
+    ensureFeedalotTemplate(state.group).catch(() => {});
+  }
   $("#login-screen").classList.add("hidden");
   $("#capture-screen").classList.remove("hidden");
   $("#who").textContent = state.name;
@@ -240,15 +245,33 @@ async function handleSync() {
 }
 
 async function handleExport() {
+  // The FULL group file whenever this device holds one - that is the point
+  // of Refresh. Without one it falls back to a my-entries-only file, which
+  // is clearly labelled as such rather than pretending to be the master.
+  const held = await DB.getMaster(state.group);
+  if (held) {
+    flashStatus("Building the group file…");
+    const built = await buildGroupExport(state.group);
+    const url = URL.createObjectURL(built.blob);
+    const a2 = document.createElement("a");
+    a2.href = url; a2.download = built.filename;
+    document.body.appendChild(a2); a2.click(); a2.remove();
+    URL.revokeObjectURL(url);
+    let msg = `Group file downloaded (${built.placed} of your entries written in).`;
+    if (built.problems.length) msg += ` ${built.problems.length} couldn't be placed.`;
+    flashStatus(msg);
+    return;
+  }
   const all = await DB.allEntries();
   if (all.length === 0) { flashStatus("Nothing to export yet."); return; }
   const blob = buildWorkbookBlob(all, XLSX);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = `feedalot_export_${today()}.xlsx`;
+  a.href = url; a.download = `feedalot_my_entries_${today()}.xlsx`;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
-  flashStatus(`Downloaded a backup of ${all.length} entries.`);
+  flashStatus(`No group file loaded yet - downloaded your ${all.length} entries only. ` +
+              `Use "Refresh full group data" in My Data to get the real file.`);
 }
 
 function saveServerUrl() {
@@ -296,26 +319,85 @@ async function renderMyData() {
   ).join("");
 }
 
+// ---------------------------------------------------------------- Scanner Import
+/*
+Same real format confirmed against an actual XR5000 export: a single
+column of comma-joined CSV lines - EID,VID,Weight,Date,Time,Adg,Days,Lwg.
+Each row becomes a normal weighing entry, saved locally exactly like the
+manual Weighing tab would - it flows through the same sync path already
+built and tested, no new server work needed.
+*/
+function parseScannerFile(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, { type: "array" });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  const lines = [];
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    const cell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
+    if (cell && cell.v) lines.push(String(cell.v));
+  }
+  if (lines.length === 0) throw new Error("File appears to be empty.");
+  const header = lines[0].split(",").map((h) => h.trim());
+  const idx = (name) => header.indexOf(name);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(",");
+    if (cols.length < header.length) continue;
+    rows.push({
+      eid: cols[idx("EID")].trim(),
+      vid: cols[idx("VID")].trim(),
+      weight: Number(cols[idx("Weight")]),
+      date: cols[idx("Date")].trim(),
+    });
+  }
+  return rows;
+}
+
+async function handleScannerFile(file) {
+  const resultEl = $("#scanner-result");
+  resultEl.innerHTML = `<p class="dim small">Reading file…</p>`;
+  try {
+    const buffer = await file.arrayBuffer();
+    const rows = parseScannerFile(buffer);
+    for (const row of rows) {
+      await DB.addEntry({ type: "weighing", group: state.group, date: row.date, sheepId: row.vid, weight: row.weight });
+    }
+    resultEl.innerHTML = `<p class="flash ok" style="text-align:left">Queued ${rows.length} readings as weighing entries - hit Sync to send them in.</p>`;
+    afterSave();
+  } catch (e) {
+    resultEl.innerHTML = `<p class="flash error" style="text-align:left">Couldn't read that file: ${e.message}</p>`;
+  }
+}
+
 async function handleRefreshGroup() {
   $("#refresh-group-btn").disabled = true;
   $("#refresh-status").textContent = "Downloading…";
   try {
     const url = `${SERVER_URL}/feedlot/sync/group_file?group=${encodeURIComponent(state.group)}&password=${encodeURIComponent(state.password)}`;
-    const resp = await fetch(url);
+    const resp = await fetch(url, { headers: { "ngrok-skip-browser-warning": "true" } });
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
       $("#refresh-status").textContent = body.error || `Failed (${resp.status}).`;
       $("#refresh-group-btn").disabled = false;
       return;
     }
-    const blob = await resp.blob();
-    const objUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objUrl; a.download = `${state.group.replace(/\s+/g, "_")}_current.xlsx`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(objUrl);
+    // STORE it rather than dumping it straight into Downloads. Keeping the
+    // raw bytes is what lets Export hand back a real, complete group file
+    // later - with this phone's own entries written into it - and it works
+    // offline from then on.
+    const buf = await resp.arrayBuffer();
+    if (!buf || buf.byteLength < 1000) {
+      $("#refresh-status").textContent = "The server sent an empty or unreadable file.";
+      $("#refresh-group-btn").disabled = false;
+      return;
+    }
+    await DB.putMaster(state.group, buf);
     localStorage.setItem("feedalot_last_refresh", new Date().toISOString());
-    $("#refresh-status").textContent = "Downloaded just now - includes everyone's synced data as of right now.";
+    const kb = Math.round(buf.byteLength / 1024);
+    $("#refresh-status").textContent =
+      `Loaded (${kb} KB) - includes everyone's synced data as of now. ` +
+      `Export now gives you this whole file.`;
+    refreshStatus();
   } catch (e) {
     $("#refresh-status").textContent = `Network error: ${e.message}`;
   }
@@ -413,13 +495,61 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#save-sick-btn").addEventListener("click", saveSick);
 
   $("#sync-btn").addEventListener("click", handleSync);
+  // Emergency Recovery button - added next to Sync/Export so it's always
+  // reachable even when everything else is broken.
+  if (!document.getElementById("recover-btn") && document.querySelector(".action-row")) {
+    const btn = document.createElement("button");
+    btn.id = "recover-btn";
+    btn.textContent = "Recover all data";
+    btn.style.cssText = "background:#8a3a1a;color:#ffd8a0;border:none;font-weight:600";
+    btn.title = "Download every captured entry from this device as a file. Use when Sync isn't working.";
+    btn.addEventListener("click", emergencyDump);
+    document.querySelector(".action-row").appendChild(btn);
+  }
+
   $("#export-btn").addEventListener("click", handleExport);
   $("#settings-btn").addEventListener("click", saveServerUrl);
   $("#formulation-calc-btn").addEventListener("click", calculateFormulation);
   $("#mydata-type").addEventListener("change", renderMyData);
   $("#refresh-group-btn").addEventListener("click", handleRefreshGroup);
+  $("#scanner-file").addEventListener("change", (e) => {
+    if (e.target.files.length) handleScannerFile(e.target.files[0]);
+  });
   renderFormulationFields();
 
   initLogin();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js").catch(() => {});
 });
+
+/* ---------------------------------------------------------------- emergency recovery
+   Dumps EVERY captured entry from IndexedDB straight to the phone as a JSON
+   file. No server, no permissions, no sync needed - the person taps the
+   button and their browser saves the file. Send it to the master PC and it
+   can be imported back into the ledger.
+
+   This is the ONLY reliable way to get data off a phone whose sync is
+   broken. It always works because it never leaves the device.  */
+async function emergencyDump() {
+  try {
+    const all = await DB.allEntries();
+    if (!all.length) { flashStatus("Nothing captured on this device."); return; }
+    const payload = {
+      app: "feedalot-worker",
+      exported_at: new Date().toISOString(),
+      device: navigator.userAgent,
+      entry_count: all.length,
+      entries: all,
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `feedalot_captures_${new Date().toISOString().slice(0,10)}_${all.length}entries.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    flashStatus(`Downloaded ${all.length} entries. Send that file to the master PC.`);
+  } catch (e) {
+    flashStatus(`Recovery failed: ${e.message}`);
+  }
+}
