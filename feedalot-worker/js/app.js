@@ -537,7 +537,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderFormulationFields();
 
   initLogin();
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js").catch(() => {});
+  setupAutoUpdate();
 });
 
 /* ---------------------------------------------------------------- emergency recovery
@@ -601,4 +601,77 @@ function enterDemo() {
     b.textContent = "DEMO MODE - browse the app, nothing is saved. Sign out to leave.";
     document.getElementById("capture-screen").prepend(b);
   }
+}
+
+/* ------------------------------------------------------------ auto-update
+
+A PWA only picks up a new build when it is opened with a connection, and
+even then the page keeps running the old code until it is reloaded. That is
+why a phone could take a deploy and still behave like the old version.
+
+This does three things:
+  - re-checks for a new service worker every 15 minutes and every time the
+    app comes back to the foreground, not only on a cold start
+  - when a new build takes over, reloads the page so the new code is the
+    code that is running
+  - refuses to reload while someone is mid-entry. A half-typed pen would be
+    lost. In that case it shows a banner and waits for them to tap it.
+
+Nothing here can touch captured data: entries live in IndexedDB, which is
+untouched by a code update, and every SAVE has already written to it before
+any of this can run.
+*/
+const APP_VERSION = "2026.08.31-1";
+let _reloading = false;
+
+function _hasUnsavedInput() {
+  const fields = document.querySelectorAll("#capture-screen input[type=text], #capture-screen input[type=date]");
+  for (const f of fields) {
+    if (f.id === "f-date" || f.id === "msg-input") continue;
+    if (f.value && String(f.value).trim() !== "") return true;
+  }
+  return false;
+}
+
+function _updateBanner() {
+  if (document.getElementById("update-banner")) return;
+  const b = document.createElement("div");
+  b.id = "update-banner";
+  b.textContent = "New version ready - tap to update";
+  b.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:200;padding:14px;" +
+    "text-align:center;background:#00e5c7;color:#06251f;font-weight:600;cursor:pointer";
+  b.addEventListener("click", () => { _reloading = true; location.reload(); });
+  document.body.appendChild(b);
+}
+
+function _applyUpdate() {
+  if (_reloading) return;
+  if (_hasUnsavedInput()) { _updateBanner(); return; }
+  _reloading = true;
+  location.reload();
+}
+
+function setupAutoUpdate() {
+  const el = document.getElementById("login-status");
+  if (el && el.parentNode && !document.getElementById("app-version")) {
+    const v = document.createElement("p");
+    v.id = "app-version";
+    v.className = "dim small";
+    v.textContent = "v" + APP_VERSION;
+    el.parentNode.appendChild(v);
+  }
+  if (!("serviceWorker" in navigator)) return;
+
+  navigator.serviceWorker.register("service-worker.js").then((reg) => {
+    // A new worker takes over as soon as it installs (the worker calls
+    // skipWaiting), so this fires exactly when the new build is live.
+    navigator.serviceWorker.addEventListener("controllerchange", _applyUpdate);
+    const check = () => { reg.update().catch(() => {}); };
+    setInterval(check, 15 * 60 * 1000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") check();
+    });
+    window.addEventListener("online", check);
+    check();
+  }).catch(() => {});
 }
