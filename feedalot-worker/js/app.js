@@ -7,7 +7,17 @@ tunnel, shared Flask process) - FeedAlot's routes just live under
 */
 
 const DEFAULT_SERVER_URL = "https://purse-delta-humming.ngrok-free.dev";
-let SERVER_URL = localStorage.getItem("feedalot_server_url") || DEFAULT_SERVER_URL;
+// A device that once saved a localhost/http address in Settings would keep
+// using it forever and never reach the home PC. Any saved localhost or
+// plain-http address is discarded once, same guard EGGSACT already has.
+let SERVER_URL = (() => {
+  const saved = localStorage.getItem("feedalot_server_url");
+  if (!saved || /127\.0\.0\.1|localhost|^http:\/\//i.test(saved)) {
+    localStorage.removeItem("feedalot_server_url");
+    return DEFAULT_SERVER_URL;
+  }
+  return saved;
+})();
 
 let state = { group: null, name: null, password: null, demo: false };
 
@@ -223,6 +233,9 @@ function timeAgo(iso) {
 }
 
 async function handleSync() {
+  // Demo data is dummy data. It stays on the device and never goes to the
+  // real server, or it would land in the real group file.
+  if (state.demo) { flashStatus("Demo mode - nothing is sent to the server. Export still works.", true); return; }
   const unsynced = await DB.unsyncedEntries();
   if (unsynced.length === 0) { flashStatus("Nothing new to sync."); return; }
   $("#sync-btn").disabled = true; $("#sync-btn").textContent = "Syncing…";
@@ -230,7 +243,11 @@ async function handleSync() {
     const blob = buildWorkbookBlob(unsynced, XLSX);
     const form = new FormData();
     form.append("file", blob, `feedalot_sync_${Date.now()}.xlsx`);
-    const resp = await fetch(`${SERVER_URL}/feedlot/sync/upload_file`, { method: "POST", body: form });
+    const resp = await fetch(`${SERVER_URL}/feedlot/sync/upload_file`, {
+      method: "POST",
+      body: form,
+      headers: { "ngrok-skip-browser-warning": "true" },
+    });
     const body = await resp.json();
     if (resp.ok && body.ok) {
       await DB.markSynced(unsynced.map((e) => e.id));

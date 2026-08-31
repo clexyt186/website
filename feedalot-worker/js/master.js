@@ -85,6 +85,11 @@ function faBlockLastRow(sheet, idCol, dataStart) {
   const maxRow = sheet.maxRow();
   let r = dataStart;
   while (r <= maxRow) {
+    // A merged cell here is the NEXT block's label, not another sheep.
+    // Stopping only at a blank let a scan run straight into the ADG or BCS
+    // block below, find the right sheep ID in the wrong block, and write a
+    // live weight into a derived column.
+    if (typeof sheet.isMerged === "function" && sheet.isMerged(r, idCol)) break;
     const v = sheet.read(r, idCol);
     if (v === null || v === "") break;
     r += 1;

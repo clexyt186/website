@@ -334,6 +334,28 @@ class SheetPatcher {
       `<dimension ref="${dm[1]}${dm[2]}:${colToLetters(endCol)}${endRow}"/>`);
   }
 
+  /** Set of every cell ref covered by a merged range, e.g. {"B4","B5"}.
+   *  FeedAlot's weighing sheet stacks blocks with the SAME sheep IDs and
+   *  separates them with a merged label row, so "where does this block end"
+   *  needs this as well as "where is the first blank". */
+  mergedRefs() {
+    if (this._merged) return this._merged;
+    const set = new Set();
+    for (const m of this.xml.matchAll(/<mergeCell\b[^>]*ref="([A-Z]+\d+):([A-Z]+\d+)"/g)) {
+      const a = parseRef(m[1]), b = parseRef(m[2]);
+      if (!a || !b) continue;
+      for (let r = a.row; r <= b.row; r++) {
+        for (let c = a.col; c <= b.col; c++) set.add(cellRef(r, c));
+      }
+    }
+    this._merged = set;
+    return set;
+  }
+
+  isMerged(row, col) {
+    return this.mergedRefs().has(cellRef(row, col));
+  }
+
   /** Last row index that has any cell, for append-style sheets. */
   maxRow() {
     let max = 0;

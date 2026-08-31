@@ -86,7 +86,7 @@ async function doLogin() {
   $("#login-status").textContent = "Checking…";
   try {
     const resp = await fetch(`${SERVER_URL}/sync/login`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
       body: JSON.stringify({ name, pin }),
     });
     const body = await resp.json();
@@ -220,7 +220,7 @@ async function renderTeam() {
   el.innerHTML = `<p class="dim small">Loading…</p>`;
   try {
     const url = `${SERVER_URL}/sync/people?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(state.pin || "")}`;
-    const resp = await fetch(url);
+    const resp = await fetch(url, { headers: { "ngrok-skip-browser-warning": "true" } });
     const body = await resp.json();
     if (!resp.ok || !body.ok) {
       if (resp.status === 401 || resp.status === 403) {
@@ -267,7 +267,7 @@ async function renderMessages() {
   if (isAdmin) {
     $("#msg-admin-thread-list").classList.remove("hidden");
     try {
-      const resp = await fetch(`${SERVER_URL}/sync/message/all_threads?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(pin)}`);
+      const resp = await fetch(`${SERVER_URL}/sync/message/all_threads?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(pin)}`, { headers: { "ngrok-skip-browser-warning": "true" } });
       const body = await resp.json();
       if (!resp.ok || !body.ok) { $("#msg-admin-thread-list").innerHTML = `<p class="dim small">${body.error || "Couldn't load."}</p>`; return; }
       const names = Object.keys(body.threads);
@@ -286,7 +286,7 @@ async function renderMessages() {
         btn.addEventListener("click", async () => {
           selectedThreadWorker = btn.dataset.worker;
           await fetch(`${SERVER_URL}/sync/message/mark_read`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
+            method: "POST", headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
             body: JSON.stringify({ name: state.person, pin: state.pin, worker: selectedThreadWorker }),
           });
           renderMessages();
@@ -299,7 +299,7 @@ async function renderMessages() {
   } else {
     $("#msg-admin-thread-list").classList.add("hidden");
     try {
-      const resp = await fetch(`${SERVER_URL}/sync/message/thread?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(pin)}`);
+      const resp = await fetch(`${SERVER_URL}/sync/message/thread?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(pin)}`, { headers: { "ngrok-skip-browser-warning": "true" } });
       const body = await resp.json();
       if (!resp.ok || !body.ok) { $("#msg-thread").innerHTML = `<p class="dim small">${body.error || "Couldn't load."}</p>`; return; }
       renderThreadMessages(body.messages);
@@ -337,7 +337,7 @@ async function sendMessage() {
   }
   try {
     const resp = await fetch(`${SERVER_URL}/sync/message/send`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      method: "POST", headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" }, body: JSON.stringify(body),
     });
     const r = await resp.json();
     if (!resp.ok || !r.ok) { flashStatus(r.error || "Couldn't send.", true); return; }
@@ -358,7 +358,7 @@ async function checkUnreadMessages() {
     const url = isAdmin
       ? `${SERVER_URL}/sync/message/all_threads?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(state.pin)}`
       : `${SERVER_URL}/sync/message/thread?name=${encodeURIComponent(state.person)}&pin=${encodeURIComponent(state.pin)}`;
-    const resp = await fetch(url);
+    const resp = await fetch(url, { headers: { "ngrok-skip-browser-warning": "true" } });
     const body = await resp.json();
     if (!resp.ok || !body.ok) return;
     let unread = 0;
@@ -381,7 +381,7 @@ async function downloadPersonData(person) {
   try {
     const url = `${SERVER_URL}/sync/person_download?name=${encodeURIComponent(state.person)}` +
                `&pin=${encodeURIComponent(state.pin)}&person=${encodeURIComponent(person)}`;
-    const resp = await fetch(url);
+    const resp = await fetch(url, { headers: { "ngrok-skip-browser-warning": "true" } });
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
       state.pin = null;
@@ -733,6 +733,9 @@ function timeAgo(iso) {
 }
 
 async function handleSync() {
+  // Demo data is dummy data. It stays on the device and never goes to the
+  // real server, or it would land in the real house file.
+  if (state.demo) { flashStatus("Demo mode - nothing is sent to the server. Export still works.", true); return; }
   if (!SERVER_URL) { flashStatus("No server address - tap Settings to set one.", true); return; }
   $("#sync-btn").disabled = true; $("#sync-btn").textContent = "Syncing…";
   const result = await syncNow(SERVER_URL, state.person);

@@ -9,6 +9,7 @@ this is.
 Store layout (all local, never touches the network on its own):
   entries      - every captured entry, one row per pen+date+type+house
   meta         - small key/value bag: lastSyncedAt, lastBackedUpAt, personName
+  masters      - the workbook for a house, as RAW bytes
 */
 
 const DB_NAME = "eggsact_worker";
@@ -27,10 +28,10 @@ function openDB() {
       if (!db.objectStoreNames.contains("meta")) {
         db.createObjectStore("meta", { keyPath: "key" });
       }
-      // v2: the house master file, stored as the RAW bytes exactly as the
-      // home PC served them. Never parsed, never rewritten - so every
-      // formula, rollup and FCR link survives untouched. Export hands these
-      // bytes straight back.
+      // v2: the house workbook, stored as the RAW bytes exactly as they were
+      // served or embedded. Never parsed, never rewritten - so every formula,
+      // rollup and FCR link survives untouched. Export hands these bytes
+      // straight back with the device's entries patched in.
       if (!db.objectStoreNames.contains("masters")) {
         db.createObjectStore("masters", { keyPath: "house" });
       }
@@ -48,6 +49,10 @@ const DB = {
       const store = tx.objectStore("entries");
       entry.savedAt = new Date().toISOString();
       entry.synced = false;
+      // Demo captures are stamped here, at the one place every entry passes
+      // through. They still export (that is the point of the demo) but they
+      // are filtered out of Sync so they can never reach the real master.
+      entry.demo = !!(typeof state !== "undefined" && state && state.demo);
       const req = store.add(entry);
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -74,9 +79,11 @@ const DB = {
     });
   },
 
+  /** Demo entries stay on the device - they are dummy data and must never
+   *  reach the real master. Everything else that isn't synced yet. */
   async unsyncedEntries() {
     const all = await this.allEntries();
-    return all.filter((e) => !e.synced);
+    return all.filter((e) => !e.synced && !e.demo);
   },
 
   async markSynced(ids) {
@@ -97,7 +104,13 @@ const DB = {
   },
 
   // ------------------------------------------------------------ masters
-  async putMaster(house, arrayBuffer) {
+  /**
+   * isTemplate marks a workbook that came from templates.js rather than from
+   * the home PC. It changes nothing about how the bytes are stored - it is
+   * there so Export can tell the person whether they are holding the real
+   * house file or a blank layout, instead of both looking identical.
+   */
+  async putMaster(house, arrayBuffer, isTemplate) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction("masters", "readwrite");
@@ -106,6 +119,7 @@ const DB = {
         data: arrayBuffer,
         downloadedAt: new Date().toISOString(),
         bytes: arrayBuffer.byteLength,
+        isTemplate: !!isTemplate,
       });
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);

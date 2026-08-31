@@ -1,4 +1,4 @@
-const CACHE_NAME = "feedalot-worker-v2";
+const CACHE_NAME = "feedalot-worker-v3";
 const SHELL_FILES = [
   "./",
   "./index.html",
@@ -11,6 +11,7 @@ const SHELL_FILES = [
   "./js/xlsx-export.js",
   "./js/numeric_input.js",
   "./js/formulation.js",
+  "./js/templates.js",
   "./js/app.js",
   "./js/vendor/xlsx.full.min.js",
 ];

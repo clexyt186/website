@@ -1,32 +1,34 @@
 /*
 EGGSACT Worker - local master file
 
-THE DESIGN (as agreed)
+THE DESIGN
   1. The home PC master is the single source of truth. A phone's file is
      NEVER uploaded - that is what makes two people capturing at once safe.
-  2. Refresh  -> this device's master becomes a byte-for-byte copy of the
+  2. Refresh  -> this device's workbook becomes a byte-for-byte copy of the
                  home master, including everyone else's synced data.
-  3. Capture  -> the entry goes into the ledger AND into the local master,
-                 in its correct cell.
-  4. Export   -> hands back that local master: home version + this device's
-                 not-yet-synced entries already in place.
-  5. Sync     -> unchanged. The LEDGER is pushed, never the file.
+     No access to that house? The device keeps the embedded blank template
+     instead - a real, complete layout with every day column and every pen.
+  3. Capture  -> the entry goes into local storage.
+  4. Export   -> hands back the stored workbook with this device's
+                 not-yet-synced entries written into their correct cells.
+  5. Sync     -> unchanged. The ENTRIES are pushed, never the file.
   6. Duplicate rule -> after a refresh the downloaded master already contains
      everything this device has synced, so ONLY unsynced entries are applied.
-     Re-applying the whole ledger would double-count. This rule is enforced
-     in exactly one place: pendingFor().
+     Re-applying everything would double-count. Enforced in one place:
+     pendingFor().
 
-HOW STEP 3 KEEPS THE FILE INTACT
+HOW STEP 4 KEEPS THE FILE INTACT
 Writing goes through xlsx-patch.js, which edits the cell's XML inside the zip
-rather than rebuilding the workbook. Verified on the real master: 17,420
-formulas before, 17,420 after. Rebuilding it with the bundled SheetJS would
-have left zero.
+rather than rebuilding the workbook. Verified against the real Nketlwane
+master: 34,842 formulas before, 34,842 after. Rebuilding it with the bundled
+SheetJS would have left zero.
 
 WHAT IT WILL NOT DO
-Place a feed entry into a week block the home PC hasn't created yet, because
-that block's Pen FI / Ave Bird FI / FCR formulas have to be linked to the
-matching egg-mass rollup - the home PC owns that. Such entries are listed on
-a "Not yet placed" sheet in the export, never dropped and never guessed at.
+Invent a day column or a feed week block that the workbook doesn't have. The
+home PC owns that geometry - a column created on a phone would not line up
+with the one the home PC creates, and the weekly Pen FI / Ave Bird FI / FCR
+formulas are linked to specific columns. Anything that can't be placed is
+listed on the "Not yet placed" sheet, never dropped and never guessed at.
 */
 
 const MASTER_SHEETS = {
@@ -37,7 +39,9 @@ const MASTER_SHEETS = {
   eggquality: "Egg Quality",
 };
 
-// Matches config.json's judi_profile geometry
+// Matches config.json's judi_profile geometry, confirmed against the real
+// JUDI_DATA_*.xlsx files: row 1 dates, row 2 week labels, row 3 headers,
+// pens from row 4 down column A.
 const GEO = {
   dateRow: 1,
   weekRow: 2,
@@ -56,7 +60,7 @@ function ddMon(s) { const { m, d } = ymd(s); return `${String(d).padStart(2, "0"
 
 function numOrNull(v) {
   if (v === null || v === undefined || v === "") return null;
-  const n = Number(String(v).replace(",", "."));
+  const n = Number(String(v).replace(/,/g, "."));
   return Number.isFinite(n) ? n : null;
 }
 
@@ -91,19 +95,48 @@ function penIndex(sheet, startRow) {
   return idx;
 }
 
-/** Feed week block covering a date. Matched on the row-1 DATE RANGE
- *  ("04Aug - 10Aug2026"), not on the row-2 label, because pre-stamped blocks
- *  are labelled by week number ("94W") while a date-labelled lookup would
- *  miss them and appear to need a new block. */
+/**
+ * Parses a feed-block header like "18Aug - 24Aug2026" into {start, end} as
+ * UTC dates. The year is only written on the end date, so the start takes the
+ * same year - unless the block straddles New Year (e.g. "29Dec - 04Jan2027"),
+ * where the start belongs to the year before.
+ */
+function parseWeekRange(text) {
+  const s = String(text).replace(/\s+/g, "");
+  const m = /^(\d{1,2})([A-Za-z]{3})-(\d{1,2})([A-Za-z]{3})(\d{4})$/.exec(s);
+  if (!m) return null;
+  const mi = (abbr) => MONTHS3.findIndex((x) => x.toLowerCase() === abbr.toLowerCase());
+  const sm = mi(m[2]), em = mi(m[4]);
+  if (sm < 0 || em < 0) return null;
+  const endYear = Number(m[5]);
+  const startYear = sm > em ? endYear - 1 : endYear;
+  return {
+    start: Date.UTC(startYear, sm, Number(m[1])),
+    end: Date.UTC(endYear, em, Number(m[3])),
+  };
+}
+
+/**
+ * Feed week block covering a date, matched on the row-1 DATE RANGE.
+ *
+ * This used to test `range.startsWith("19Aug")`, which only ever matched the
+ * FIRST day of a block - a block reading "18Aug - 24Aug2026" rejected the
+ * 19th through the 24th, so six days in seven silently failed to place. It
+ * now tests whether the date falls INSIDE the range.
+ *
+ * The row-2 label is still checked as a fallback, because some blocks are
+ * pre-stamped by week number ("10W") and others by date.
+ */
 function feedWeekCol(sheet, dateStr) {
+  const want = ymd(dateStr);
+  const t = Date.UTC(want.y, want.m - 1, want.d);
   const target = ddMon(dateStr);
   const maxCol = sheet.maxCol();
   for (let c = 1; c <= maxCol; c++) {
     const hdr = sheet.read(GEO.headerRow, c);
     if (!hdr || String(hdr).trim() !== "Bird #") continue;
-    const range = sheet.read(GEO.dateRow, c);
-    if (range && String(range).replace(/\s/g, "").toLowerCase()
-                 .startsWith(target.toLowerCase())) return c;
+    const range = parseWeekRange(sheet.read(GEO.dateRow, c) || "");
+    if (range && t >= range.start && t <= range.end) return c;
     const label = sheet.read(GEO.weekRow, c);
     if (label && String(label).trim() === target) return c;   // date-labelled block
   }
@@ -124,9 +157,9 @@ function placeEgg(book, e, problems) {
   const ws = book.sheet(MASTER_SHEETS.egg);
   if (!ws) { problems.push(`${e.date} pen ${e.pen}: no '${MASTER_SHEETS.egg}' sheet`); return false; }
   const col = dayCol(ws, e.date);
-  if (col === null) { problems.push(`${e.date} pen ${e.pen}: that day isn't in the master yet`); return false; }
+  if (col === null) { problems.push(`${e.date} pen ${e.pen}: that day isn't in this file yet`); return false; }
   const row = penIndex(ws, GEO.firstRow)[Number(e.pen)];
-  if (!row) { problems.push(`${e.date} pen ${e.pen}: pen isn't in the master`); return false; }
+  if (!row) { problems.push(`${e.date} pen ${e.pen}: pen isn't in this file`); return false; }
   const o = GEO.egg;
   const eggs = numOrNull(e.eggs), wt = numOrNull(e.weight);
   ws.write(row, col + o.eggs, eggs);
@@ -144,7 +177,7 @@ function placeFeed(book, e, problems) {
   if (!ws) { problems.push(`${e.date} pen ${e.pen}: no '${MASTER_SHEETS.feed}' sheet`); return false; }
   const col = feedWeekCol(ws, e.date);
   if (col === null) {
-    problems.push(`${e.date} pen ${e.pen}: feed week for ${ddMon(e.date)} not on the master yet`);
+    problems.push(`${e.date} pen ${e.pen}: feed week covering ${ddMon(e.date)} isn't in this file yet`);
     return false;
   }
   const row = penIndex(ws, GEO.feedFirstRow)[Number(e.pen)];
@@ -178,7 +211,7 @@ function placeBodyWeight(book, e, problems) {
       }
     }
   }
-  problems.push(`${e.date} pen ${e.pen} hen ${e.hen}: not in the master grid`);
+  problems.push(`${e.date} pen ${e.pen} hen ${e.hen}: not in the body-weight grid`);
   return false;
 }
 
@@ -203,7 +236,7 @@ function placeEggQuality(book, e, problems) {
   for (let r = 3; r <= maxRow; r++) {
     if (Number(ws.read(r, 1)) === Number(e.egg)) { row = r; break; }
   }
-  if (!row) { problems.push(`egg ${e.egg}: not in the master sheet`); return false; }
+  if (!row) { problems.push(`egg ${e.egg}: egg number isn't in this file`); return false; }
   let placed = 0;
   for (const [field, label] of Object.entries(wanted)) {
     const val = numOrNull(e[field]);
@@ -211,7 +244,7 @@ function placeEggQuality(book, e, problems) {
     const key = Object.keys(headers).find((h) => h.startsWith(label));
     if (key) { ws.write(row, headers[key], val); placed++; }
   }
-  if (!placed) problems.push(`egg ${e.egg}: no matching columns on the master`);
+  if (!placed) problems.push(`egg ${e.egg}: no matching columns in this file`);
   return placed > 0;
 }
 
@@ -222,7 +255,9 @@ const PLACERS = {
 
 /* ---------------------------------------------------------------- public */
 
-/** THE DUPLICATE RULE lives here: this house, unsynced only, oldest first. */
+/** THE DUPLICATE RULE lives here: this house, unsynced only, oldest first.
+ *  Demo entries ARE included - the demo is meant to produce a real export -
+ *  and they are excluded from Sync instead, in DB.unsyncedEntries(). */
 function pendingFor(entries, house) {
   return entries
     .filter((e) => e.house === house && !e.synced)
@@ -244,24 +279,32 @@ function applyPending(book, entries, house) {
   return { placed, problems };
 }
 
-/** Anything that couldn't be placed goes on a visible sheet rather than
- *  quietly not being in the file. */
-function writeNotPlacedSheet(book, problems) {
-  if (!problems.length) return;
+/** Anything that couldn't be placed is written into the file itself, so a
+ *  person looking at their export can see what's missing and why. The sheet
+ *  is created in the embedded templates; on a real master it only exists if
+ *  the home PC put one there. */
+function writeNotPlacedSheet(book, problems, placed) {
   const ws = book.sheet("Not yet placed");
-  if (!ws) return;   // sheet only exists if the master carries one
+  if (!ws) return;
   let r = 1;
-  ws.write(r++, 1, "These entries are on the device but not in this file yet");
-  ws.write(r++, 1, "They go in when you Sync, then Refresh.");
+  ws.write(r++, 1, `Export built ${new Date().toISOString().slice(0, 16).replace("T", " ")}`);
+  ws.write(r++, 1, `${placed} entr${placed === 1 ? "y" : "ies"} written into this file.`);
+  r++;
+  if (!problems.length) {
+    ws.write(r++, 1, "Everything captured on this device was placed.");
+    return;
+  }
+  ws.write(r++, 1, "These entries are on the device but could NOT be written into a cell:");
+  ws.write(r++, 1, "They are still saved on the phone and still go in when you Sync.");
   r++;
   for (const p of problems) ws.write(r++, 1, p);
 }
 
 /**
- * Builds the export blob: the stored master with this device's unsynced
+ * Builds the export blob: the stored workbook with this device's unsynced
  * entries placed into it.
- * Returns {blob, filename, placed, problems, downloadedAt} or null when no
- * master has been downloaded for this house yet.
+ * Returns {blob, filename, placed, problems, downloadedAt, isTemplate} or
+ * null when nothing has been stored for this house yet.
  */
 async function buildMasterExport(house) {
   const stored = await DB.getMaster(house);
@@ -269,21 +312,22 @@ async function buildMasterExport(house) {
   const book = new XlsxPatcher(stored.data);
   const entries = await DB.allEntries();
   const { placed, problems } = applyPending(book, entries, house);
-  writeNotPlacedSheet(book, problems);
+  writeNotPlacedSheet(book, problems, placed);
   const short = house.replace(/^House\s+/, "");
   const stamp = new Date().toISOString().slice(0, 10);
   return {
     blob: book.toBlob(),
-    filename: `${short}_master_${stamp}.xlsx`,
+    filename: `${short}${stored.isTemplate ? "_capture" : "_master"}_${stamp}.xlsx`,
     placed,
     problems,
     downloadedAt: stored.downloadedAt,
+    isTemplate: !!stored.isTemplate,
   };
 }
 
 if (typeof module !== "undefined") {
   module.exports = {
     buildMasterExport, applyPending, pendingFor, dayCol, penIndex,
-    feedWeekCol, ddMon, MASTER_SHEETS, GEO,
+    feedWeekCol, parseWeekRange, writeNotPlacedSheet, ddMon, MASTER_SHEETS, GEO,
   };
 }

@@ -47,6 +47,10 @@ const DB = {
       const store = tx.objectStore("entries");
       entry.savedAt = new Date().toISOString();
       entry.synced = false;
+      // Demo captures are stamped at the one place every entry passes
+      // through. They still export, but they are filtered out of Sync so
+      // they can never reach the real group file.
+      entry.demo = !!(typeof state !== "undefined" && state && state.demo);
       const req = store.add(entry);
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -75,7 +79,7 @@ const DB = {
 
   async unsyncedEntries() {
     const all = await this.allEntries();
-    return all.filter((e) => !e.synced);
+    return all.filter((e) => !e.synced && !e.demo);
   },
 
   async markSynced(ids) {
