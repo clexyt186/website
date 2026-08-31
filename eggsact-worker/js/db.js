@@ -110,7 +110,7 @@ const DB = {
    * there so Export can tell the person whether they are holding the real
    * house file or a blank layout, instead of both looking identical.
    */
-  async putMaster(house, arrayBuffer, isTemplate) {
+  async putMaster(house, arrayBuffer, isTemplate, templateVersion) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction("masters", "readwrite");
@@ -120,6 +120,7 @@ const DB = {
         downloadedAt: new Date().toISOString(),
         bytes: arrayBuffer.byteLength,
         isTemplate: !!isTemplate,
+        templateVersion: isTemplate ? (templateVersion || 0) : undefined,
       });
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);

@@ -1925,25 +1925,61 @@ function _base64ToBytes(b64) {
   return bytes.buffer;
 }
 
+/*
+TEMPLATE_VERSION exists because of a real failure mode: a phone that already
+had a template stored would keep it forever. ensureTemplatesInstalled() used
+to skip any house that had ANY workbook stored, so an existing device would
+take every code update and still hold the old, unusable layout - and Export
+would keep failing for exactly the people the fix was for.
+
+Bump this whenever the embedded workbooks change.
+*/
+const TEMPLATE_VERSION = 2;
+
 /**
- * Ensures every house this device has access to has a stored workbook. Uses
- * the embedded template ONLY if no master has been loaded for that house
- * yet - Load latest always wins. Runs on capture-screen show, silently.
+ * Ensures every house this device can reach has a usable stored workbook.
+ *
+ * Rules, in order:
+ *   - a REAL master (isTemplate === false) is never touched. Load latest wins.
+ *   - a template already at the current version is left alone.
+ *   - anything else is replaced with the embedded template.
+ *
+ * A workbook stored by a build older than this one has no isTemplate flag at
+ * all, so it cannot be told apart from a real master. Those are replaced once,
+ * on the v2 migration. Nothing is lost by that: captured entries live in a
+ * separate store and are untouched, and a real master is one tap of
+ * "Load latest" away.
  */
 async function ensureTemplatesInstalled(houseAccess) {
   const houses = (houseAccess && houseAccess.length ? houseAccess : Object.keys(EMBEDDED_TEMPLATES));
+  let migrated = null;
+  try { migrated = await DB.getMeta("templatesVersion"); } catch (e) {}
+  const firstRun = Number(migrated || 0) < TEMPLATE_VERSION;
+
   for (const h of houses) {
     if (!EMBEDDED_TEMPLATES[h]) continue;
-    const held = await DB.getMaster(h);
-    if (held) continue;   // real file already downloaded - never overwrite
+    let held = null;
+    try { held = await DB.getMaster(h); } catch (e) { held = null; }
+
+    if (held) {
+      if (held.isTemplate === false) continue;                       // real master
+      if (held.isTemplate === true &&
+          Number(held.templateVersion || 0) >= TEMPLATE_VERSION) continue;  // current
+      if (held.isTemplate === undefined && !firstRun) continue;      // already migrated
+    }
+
     try {
-      await DB.putMaster(h, _base64ToBytes(EMBEDDED_TEMPLATES[h]), true);
+      await DB.putMaster(h, _base64ToBytes(EMBEDDED_TEMPLATES[h]), true, TEMPLATE_VERSION);
     } catch (e) {
       console.warn("template install failed for", h, e);
     }
   }
+
+  if (firstRun) {
+    try { await DB.setMeta("templatesVersion", TEMPLATE_VERSION); } catch (e) {}
+  }
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { EMBEDDED_TEMPLATES, ensureTemplatesInstalled, _base64ToBytes };
+  module.exports = { EMBEDDED_TEMPLATES, ensureTemplatesInstalled, _base64ToBytes, TEMPLATE_VERSION };
 }
