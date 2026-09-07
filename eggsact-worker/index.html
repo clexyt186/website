@@ -54,6 +54,8 @@
     <button class="tab-btn" data-tab="mortality">Deaths</button>
     <button class="tab-btn" data-tab="bodyweight">Weights</button>
     <button class="tab-btn" data-tab="eggquality">Quality</button>
+    <button class="tab-btn" data-tab="slaughter">Slaughter</button>
+    <button class="tab-btn" data-tab="defeathering">Defeather</button>
     <button class="tab-btn" data-tab="mydata">My Data</button>
     <button class="tab-btn" data-tab="messages">Messages <span id="msg-unread-dot" class="hidden">●</span></button>
   </div>
@@ -143,44 +145,143 @@
 
   <div class="card tab-panel hidden" id="tab-eggquality">
     <h2>Egg Quality</h2>
+    <p class="dim small">Monthly sampling. Weights are captured on the day; the lab parameters
+      come back later and land on the same egg. Pick the month once - everything below files
+      under it.</p>
+
     <div class="row">
-      <label for="eq-egg">Egg Number</label>
-      <input id="eq-egg" type="text" inputmode="numeric" class="numeric">
+      <label for="samp-month">Month</label>
+      <input id="samp-month" type="month">
     </div>
     <div class="row">
-      <label for="eq-diameter">Diameter</label>
-      <input id="eq-diameter" type="text" inputmode="decimal" class="numeric">
+      <label for="eq-per-pen">Eggs sampled per pen</label>
+      <select id="eq-per-pen">
+        <option value="1">1 egg</option>
+        <option value="2">2 eggs (a, b)</option>
+        <option value="3">3 eggs (a, b, c)</option>
+      </select>
+    </div>
+
+    <div class="subtabs">
+      <button class="subtab-btn active" data-sub="eqw">Weights</button>
+      <button class="subtab-btn" data-sub="eqp">Parameters</button>
+    </div>
+
+    <div id="sub-eqw">
+      <div class="row">
+        <label for="eqw-pen">Pen</label>
+        <input id="eqw-pen" type="text" inputmode="numeric" class="numeric">
+      </div>
+      <div class="row">
+        <label for="eqw-egg">Egg</label>
+        <select id="eqw-egg"></select>
+      </div>
+      <div class="row">
+        <label for="eqw-weight">Individual Egg weight (g)</label>
+        <input id="eqw-weight" type="text" inputmode="decimal" class="numeric">
+      </div>
+      <button id="save-eqw-btn" class="primary big">SAVE WEIGHT (Enter)</button>
+      <p class="dim small">Saving jumps to the next egg, then the next pen.</p>
+    </div>
+
+    <div id="sub-eqp" class="hidden">
+      <div class="row">
+        <label for="eqp-pen">Pen</label>
+        <input id="eqp-pen" type="text" inputmode="numeric" class="numeric">
+      </div>
+      <div class="row">
+        <label for="eqp-egg">Egg</label>
+        <select id="eqp-egg"></select>
+      </div>
+      <div id="eqp-fields"></div>
+      <button id="save-eqp-btn" class="primary big">SAVE PARAMETERS (Enter)</button>
+      <p class="dim small">These attach to the egg weight already captured for this month.</p>
+    </div>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-slaughter">
+    <h2>Slaughter</h2>
+    <p class="dim small">Monthly. Bodies in kg, organs in grams. Anything not listed can be
+      added at the bottom - type its name once and it becomes a column of its own.</p>
+
+    <div class="row">
+      <label for="sl-month">Month</label>
+      <input id="sl-month" type="month">
     </div>
     <div class="row">
-      <label for="eq-height">Height</label>
-      <input id="eq-height" type="text" inputmode="decimal" class="numeric">
+      <label for="sl-per-pen">Birds sampled per pen</label>
+      <select id="sl-per-pen">
+        <option value="1">1 bird</option>
+        <option value="2">2 birds (a, b)</option>
+        <option value="3">3 birds (a, b, c)</option>
+      </select>
+    </div>
+
+    <div class="subtabs">
+      <button class="subtab-btn active" data-sub="slw">Weights</button>
+      <button class="subtab-btn" data-sub="slp">Parameters</button>
+    </div>
+
+    <div id="sub-slw">
+      <div class="row">
+        <label for="slw-pen">Pen</label>
+        <input id="slw-pen" type="text" inputmode="numeric" class="numeric">
+      </div>
+      <div class="row">
+        <label for="slw-bird">Bird</label>
+        <select id="slw-bird"></select>
+      </div>
+      <div class="row">
+        <label for="slw-weight">Body Weight (kg)</label>
+        <input id="slw-weight" type="text" inputmode="decimal" class="numeric">
+      </div>
+      <button id="save-slw-btn" class="primary big">SAVE WEIGHT (Enter)</button>
+    </div>
+
+    <div id="sub-slp" class="hidden">
+      <div class="row">
+        <label for="slp-pen">Pen</label>
+        <input id="slp-pen" type="text" inputmode="numeric" class="numeric">
+      </div>
+      <div class="row">
+        <label for="slp-bird">Bird</label>
+        <select id="slp-bird"></select>
+      </div>
+      <div id="slp-fields"></div>
+      <div class="extra-param">
+        <p class="dim small">Measuring something new? Name it and it gets its own column,
+          here and in the master file.</p>
+        <div class="row">
+          <label for="slp-new-label">New parameter (include the unit)</label>
+          <input id="slp-new-label" type="text" placeholder="e.g. Intestines (g)">
+        </div>
+        <button id="slp-add-btn" class="text-btn">Add this parameter</button>
+      </div>
+      <button id="save-slp-btn" class="primary big">SAVE PARAMETERS (Enter)</button>
+    </div>
+  </div>
+
+  <div class="card tab-panel hidden" id="tab-defeathering">
+    <h2>Defeathering</h2>
+    <p class="dim small">Weight after defeathering, in kg. Same month and bird labels as
+      Slaughter.</p>
+    <div class="row">
+      <label for="df-month">Month</label>
+      <input id="df-month" type="month">
     </div>
     <div class="row">
-      <label for="eq-top">Top</label>
-      <input id="eq-top" type="text" inputmode="decimal" class="numeric">
+      <label for="df-pen">Pen</label>
+      <input id="df-pen" type="text" inputmode="numeric" class="numeric">
     </div>
     <div class="row">
-      <label for="eq-bottom">Bottom</label>
-      <input id="eq-bottom" type="text" inputmode="decimal" class="numeric">
+      <label for="df-bird">Bird</label>
+      <select id="df-bird"></select>
     </div>
     <div class="row">
-      <label for="eq-equater">Equater</label>
-      <input id="eq-equater" type="text" inputmode="decimal" class="numeric">
+      <label for="df-weight">Weight (kg)</label>
+      <input id="df-weight" type="text" inputmode="decimal" class="numeric">
     </div>
-    <div class="row">
-      <label for="eq-force">Force at Break [N]</label>
-      <input id="eq-force" type="text" inputmode="decimal" class="numeric">
-    </div>
-    <div class="row">
-      <label for="eq-displacement">Displacement at Break [mm]</label>
-      <input id="eq-displacement" type="text" inputmode="decimal" class="numeric">
-    </div>
-    <div class="row">
-      <label for="eq-eggweight">Individual Egg Weight</label>
-      <input id="eq-eggweight" type="text" inputmode="decimal" class="numeric">
-    </div>
-    <button id="save-eq-btn" class="primary big">SAVE (Enter)</button>
-    <p class="dim small">Enter moves through the fields; saving jumps to the next egg number.</p>
+    <button id="save-df-btn" class="primary big">SAVE (Enter)</button>
   </div>
 
   <div class="card tab-panel hidden" id="tab-mydata">
@@ -199,6 +300,8 @@
         <option value="mortality">Deaths</option>
         <option value="bodyweight">Weights</option>
         <option value="eggquality">Quality</option>
+        <option value="slaughter">Slaughter</option>
+        <option value="defeathering">Defeather</option>
       </select>
     </div>
     <div id="mydata-sheet"></div>

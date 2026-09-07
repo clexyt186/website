@@ -99,13 +99,15 @@ const DB = {
     return new Promise((resolve) => { tx.oncomplete = () => resolve(); });
   },
 
-  async putMaster(group, arrayBuffer) {
+  async putMaster(group, arrayBuffer, isTemplate, templateVersion) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction("masters", "readwrite");
       tx.objectStore("masters").put({
         group, data: arrayBuffer,
         downloadedAt: new Date().toISOString(), bytes: arrayBuffer.byteLength,
+        isTemplate: !!isTemplate,
+        templateVersion: isTemplate ? (templateVersion || 0) : undefined,
       });
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);

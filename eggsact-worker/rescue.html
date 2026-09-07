@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EGGSACT - Recover captured data</title>
+<style>
+  body{margin:0;background:#0a0e1a;color:#eaf1f8;font-family:-apple-system,"Segoe UI",Roboto,sans-serif;padding:18px}
+  h1{color:#00e5c7;font-size:20px;margin:0 0 4px}
+  .dim{color:#7f93a8;font-size:13px}
+  .card{background:#131a2b;border:1px solid #1f2a40;border-radius:12px;padding:16px;margin:12px 0}
+  button{width:100%;padding:16px;font-size:17px;font-weight:600;border:none;border-radius:8px;margin-top:10px}
+  .go{background:#00e5c7;color:#06251f}
+  .alt{background:#131a2b;color:#eaf1f8;border:1px solid #1f2a40}
+  #count{font-size:34px;font-weight:800;color:#00e5c7}
+  #log{font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+  textarea{width:100%;height:180px;background:#0a0e1a;color:#eaf1f8;border:1px solid #1f2a40;
+           border-radius:8px;font-size:11px;padding:8px;margin-top:10px}
+  input{width:100%;padding:10px;background:#0a0e1a;color:#eaf1f8;border:1px solid #1f2a40;border-radius:8px;font-size:14px}
+</style>
+</head>
+<body>
+
+<h1>Recover captured data</h1>
+<p class="dim">This reads what is already saved on this phone. It does not delete anything,
+and it does not need you to sign in.</p>
+
+<div class="card" id="origin-card">
+  <div class="dim" id="origin-note"></div>
+</div>
+
+<div class="card">
+  <div id="count">…</div>
+  <div class="dim" id="detail">Reading this phone…</div>
+</div>
+
+<div class="card">
+  <p class="dim" style="margin-top:0">1. Send it straight to the farm PC (needs internet)</p>
+  <input id="server" type="text" autocomplete="off">
+  <button class="go" id="send">SEND TO FARM PC</button>
+
+  <p class="dim" style="margin-top:18px">2. Or save a file to share on WhatsApp</p>
+  <button class="alt" id="dl">Save file</button>
+  <button class="alt" id="share">Share…</button>
+
+  <p class="dim" style="margin-top:18px">3. Or copy the text and paste it into WhatsApp</p>
+  <button class="alt" id="copy">Show text to copy</button>
+  <textarea id="dump" style="display:none" readonly></textarea>
+</div>
+
+<div class="card"><div id="log" class="dim">Ready.</div></div>
+
+<script src="js/vendor/xlsx.full.min.js"></script>
+<script>
+const DEFAULT_SERVER = "https://purse-delta-humming.ngrok-free.dev";
+const NG = { "ngrok-skip-browser-warning": "true" };
+const $ = (s) => document.querySelector(s);
+const say = (m) => { $("#log").textContent = m; };
+
+$("#server").value = localStorage.getItem("eggsact_server_url") || DEFAULT_SERVER;
+
+/* A browser keeps a site's saved data per ADDRESS, not per app. Data captured
+   on clexyt.co.za is invisible to clexyt.netlify.app and the other way round -
+   nothing can merge them, so if the count below is 0, the phone probably
+   captured on one of the other addresses. These links open the same page
+   there. */
+const SITES = ["clexyt.netlify.app", "clexyt.co.za", "clevita.co.za"];
+(function showOrigin() {
+  const here = location.hostname;
+  const others = SITES.filter((s) => s !== here);
+  const links = others.map((s) =>
+    `<a href="https://${s}/eggsact-worker/rescue.html" style="color:#00e5c7">${s}</a>`).join(" &middot; ");
+  $("#origin-note").innerHTML =
+    `You are on <strong style="color:#eaf1f8">${here}</strong>. Saved data belongs to the ` +
+    `address it was captured on. If the count below is 0, try: ${links}`;
+})();
+
+/* Reads the app's own IndexedDB. Opened WITHOUT a version number so this page
+   can never trigger an upgrade or change anything - it only reads. */
+function readEntries() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("eggsact_worker");
+    req.onerror = () => reject(req.error);
+    req.onsuccess = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains("entries")) return resolve([]);
+      const tx = db.transaction("entries", "readonly");
+      const g = tx.objectStore("entries").getAll();
+      g.onsuccess = () => resolve(g.result || []);
+      g.onerror = () => reject(g.error);
+    };
+  });
+}
+
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const TYPE_CODE = { egg:"Egg", feed:"Feed", bodyweight:"BW", mortality:"Mort", eggquality:"EQ" };
+const HEADERS = {
+  egg:["Pen Number","Number of Eggs","Weight","Non Layer","Number of Rejects","Reason"],
+  feed:["Pen Number","Feed Orts"],
+  bodyweight:["Pen Number","Hen","Weight"],
+  mortality:["Pen Number","Weight","Reason"],
+  eggquality:["Egg Number","Diameter","Height","top","bottom","equater",
+              "Force at Break (Standard)","Displacement at Break (Standard)","Individual Egg weights"],
+};
+function fieldsFor(t, e) {
+  switch (t) {
+    case "egg": return [e.pen,e.eggs,e.weight,e.nonlayer,e.rejects,e.reason||""];
+    case "feed": return [e.pen,e.orts];
+    case "bodyweight": return [e.pen,e.hen,e.weight];
+    case "mortality": return [e.pen,e.weight||"",e.reason||""];
+    case "eggquality": return [e.egg,e.diameter,e.height,e.top,e.bottom,e.equater,
+                               e.force,e.displacement,e.eggweight];
+    default: return null;
+  }
+}
+/* Same sheet naming the app uses and the server already parses:
+   "<Type> <DDMonYYYY> <House>". Verified against sync_import.py. */
+function buildBook(entries) {
+  const groups = {};
+  for (const e of entries) {
+    if (!TYPE_CODE[e.type] || !e.date || !e.house) continue;
+    (groups[`${e.type}|${e.date}|${e.house}`] ||= []).push(e);
+  }
+  const wb = XLSX.utils.book_new();
+  let sheets = 0;
+  for (const key of Object.keys(groups)) {
+    const [type, date, house] = key.split("|");
+    const [y,m,d] = date.split("-").map(Number);
+    const name = `${TYPE_CODE[type]} ${String(d).padStart(2,"0")}${MON[m-1]}${y} ` +
+                 `${house.replace(/^House\s+/,"").trim()}`;
+    if (name.length > 31) continue;
+    const rows = [HEADERS[type]];
+    for (const e of groups[key]) { const f = fieldsFor(type, e); if (f) rows.push(f); }
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name);
+    sheets++;
+  }
+  return sheets ? wb : null;
+}
+
+let ENTRIES = [];
+readEntries().then((rows) => {
+  ENTRIES = rows;
+  $("#count").textContent = rows.length;
+  const houses = [...new Set(rows.map(r => r.house).filter(Boolean))];
+  const unsynced = rows.filter(r => !r.synced).length;
+  $("#detail").textContent = rows.length
+    ? `entries saved on this phone - ${unsynced} not yet sent. ${houses.join(", ")}`
+    : "No entries found on this phone.";
+  say(rows.length ? "Ready to send." : "Nothing to recover. If this is wrong, this may be a different browser than the one used to capture.");
+}).catch((err) => {
+  $("#count").textContent = "!";
+  say("Couldn't read the phone's storage: " + err.message);
+});
+
+function blobOf() {
+  const wb = buildBook(ENTRIES);
+  if (!wb) return null;
+  return new Blob([XLSX.write(wb, { bookType:"xlsx", type:"array" })],
+                  { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+const fname = () => `eggsact_rescue_${new Date().toISOString().slice(0,10)}_${ENTRIES.length}.xlsx`;
+
+$("#send").addEventListener("click", async () => {
+  if (!ENTRIES.length) return say("Nothing to send.");
+  const url = $("#server").value.trim().replace(/\/$/,"");
+  const blob = blobOf();
+  if (!blob) return say("Couldn't build the file from these entries.");
+  say("Sending…");
+  try {
+    const form = new FormData();
+    form.append("file", blob, fname());
+    form.append("person", "rescue");
+    const resp = await fetch(url + "/sync/upload_file", { method:"POST", body:form, headers:NG });
+    const body = await resp.json();
+    if (resp.ok && body.ok) {
+      say(`SENT. The farm PC accepted it. Imported: ${body.imported ?? "?"}, skipped: ${body.skipped ?? "?"}.\n` +
+          `Nothing on this phone was changed - you can send again safely.`);
+    } else {
+      say("The farm PC refused it: " + (body.error || resp.status) + "\nTry option 2 or 3 below.");
+    }
+  } catch (e) {
+    say("Couldn't reach the farm PC: " + e.message +
+        "\nThe PC may be off, or there's no signal. Try option 2 or 3 below.");
+  }
+});
+
+$("#dl").addEventListener("click", () => {
+  const blob = blobOf();
+  if (!blob) return say("Nothing to save.");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = fname();
+  document.body.appendChild(a); a.click(); a.remove();
+  say("If no file appeared, use Share or the copy option instead - some phones block this.");
+});
+
+$("#share").addEventListener("click", async () => {
+  const blob = blobOf();
+  if (!blob) return say("Nothing to share.");
+  try {
+    const file = new File([blob], fname(),
+      { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    if (navigator.canShare && navigator.canShare({ files:[file] })) {
+      await navigator.share({ files:[file], title:"EGGSACT data" });
+      return say("Shared.");
+    }
+    say("This phone won't share files directly - use Save file or the copy option.");
+  } catch (e) { say("Share cancelled or unavailable: " + e.message); }
+});
+
+$("#copy").addEventListener("click", async () => {
+  const text = JSON.stringify({ app:"eggsact", exportedAt:new Date().toISOString(), entries:ENTRIES });
+  const ta = $("#dump");
+  ta.style.display = "block"; ta.value = text; ta.select();
+  try { await navigator.clipboard.writeText(text); say("Copied. Paste it into WhatsApp."); }
+  catch (e) { say("Select all the text above, copy it, and paste it into WhatsApp."); }
+});
+</script>
+</body>
+</html>

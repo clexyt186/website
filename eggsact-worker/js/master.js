@@ -215,9 +215,41 @@ function placeBodyWeight(book, e, problems) {
   return false;
 }
 
-function placeEggQuality(book, e, problems) {
+/** The original flat Egg Quality placement, kept for old entries and old
+ *  masters. When the sheet is the NEW long format but the entry is old, the
+ *  egg number is filed under the current month so it still lands somewhere
+ *  findable rather than being dropped. */
+function placeEggQualityFlat(book, e, problems, oldSheet) {
+  if (!oldSheet) {
+    const month = e.month || String(e.date || "").slice(0, 7);
+    return placeSampling(book, {
+      ...e, month, unit: String(e.egg ?? e.unit ?? "").trim(),
+      pen: e.pen || 0,
+      values: e.values || {
+        "Individual Egg weight": e.eggweight, Diameter: e.diameter, Height: e.height,
+        top: e.top, bottom: e.bottom, equater: e.equater,
+        "Force at Break (Standard)": e.force,
+        "Displacement at Break (Standard)": e.displacement,
+      },
+    }, problems, "eggquality");
+  }
+  return placeEggQualityLegacy(book, e, problems);
+}
+
+function placeEggQualityLegacy(book, e, problems) {
   const ws = book.sheet(MASTER_SHEETS.eggquality);
   if (!ws) { problems.push(`egg ${e.egg}: no '${MASTER_SHEETS.eggquality}' sheet`); return false; }
+  // Accept either shape: an old entry keyed by e.egg with flat fields, or a
+  // new one keyed by e.unit with a values map. The old sheet has no pen or
+  // month column, so those are simply not recorded there.
+  const eggNo = e.egg !== undefined && e.egg !== null && e.egg !== "" ? e.egg : e.unit;
+  const src = e.values ? {
+    diameter: e.values["Diameter"], height: e.values["Height"],
+    top: e.values["top"], bottom: e.values["bottom"], equater: e.values["equater"],
+    force: e.values["Force at Break (Standard)"],
+    displacement: e.values["Displacement at Break (Standard)"],
+    eggweight: e.values["Individual Egg weight"],
+  } : e;
   // Matched on header TEXT, so moving or renaming a column on the master
   // can't silently put readings in the wrong place.
   const wanted = {
@@ -234,40 +266,180 @@ function placeEggQuality(book, e, problems) {
   let row = null;
   const maxRow = ws.maxRow();
   for (let r = 3; r <= maxRow; r++) {
-    if (Number(ws.read(r, 1)) === Number(e.egg)) { row = r; break; }
+    if (Number(ws.read(r, 1)) === Number(eggNo)) { row = r; break; }
   }
-  if (!row) { problems.push(`egg ${e.egg}: egg number isn't in this file`); return false; }
+  if (!row) { problems.push(`egg ${eggNo}: egg number isn't in this file`); return false; }
   let placed = 0;
   for (const [field, label] of Object.entries(wanted)) {
-    const val = numOrNull(e[field]);
+    const val = numOrNull(src[field]);
     if (val === null) continue;
     const key = Object.keys(headers).find((h) => h.startsWith(label));
     if (key) { ws.write(row, headers[key], val); placed++; }
   }
-  if (!placed) problems.push(`egg ${e.egg}: no matching columns in this file`);
+  if (!placed) problems.push(`egg ${eggNo}: no matching columns in this file`);
   return placed > 0;
+}
+
+
+/* ------------------------------------------------- monthly sampling sheets
+
+Egg Quality, Slaughter and Defeathering are all the SAME shape: one row per
+sampled egg or bird, keyed by Month + Pen + Egg/Bird. That is what makes
+"1 egg this month, 3 next month" work without a mode switch - three eggs is
+simply three rows, labelled 1a, 1b, 1c.
+
+The old Egg Quality sheet was keyed by egg number alone, with no pen, no
+month and no date, so a second month's readings overwrote the first.
+
+ADDING A NEW PARAMETER
+The header row is the source of truth. A value is written under the column
+whose label matches; if no such column exists one is APPENDED with that
+label. So measuring intestines for the first time is typing "Intestines (g)"
+once - it lands correctly labelled here, in the export and on the master.
+*/
+
+const SAMPLING_SHEETS = {
+  eggquality: "Egg Quality",
+  slaughter: "Slaughter",
+  defeathering: "Defeathering",
+};
+
+/** {normalised label: column} for row 1. */
+function headerMap(ws) {
+  const map = {};
+  const maxCol = ws.maxCol();
+  for (let c = 1; c <= maxCol; c++) {
+    const h = ws.read(1, c);
+    if (h !== null && String(h).trim() !== "") map[String(h).trim().toLowerCase()] = c;
+  }
+  return map;
+}
+
+/** Column for a label, appending a new labelled column if it isn't there. */
+function columnFor(ws, label) {
+  const key = String(label).trim().toLowerCase();
+  const map = headerMap(ws);
+  if (map[key]) return map[key];
+  const c = ws.maxCol() + 1;
+  ws.write(1, c, String(label).trim());
+  return c;
+}
+
+/** Row for this month+pen+unit, or null. Never matches across months. */
+function samplingRow(ws, month, pen, unit) {
+  const h = headerMap(ws);
+  const cM = h["month"], cP = h["pen"];
+  const cU = h["egg"] !== undefined ? h["egg"] : h["bird"];
+  if (!cM || !cP || !cU) return null;
+  const maxRow = ws.maxRow();
+  for (let r = 2; r <= maxRow; r++) {
+    if (String(ws.read(r, cM) || "").trim() === String(month) &&
+        Number(ws.read(r, cP)) === Number(pen) &&
+        String(ws.read(r, cU) || "").trim().toLowerCase() === String(unit).trim().toLowerCase()) {
+      return r;
+    }
+  }
+  return null;
+}
+
+function nextSamplingRow(ws) {
+  const h = headerMap(ws);
+  const cM = h["month"] || 1;
+  const maxRow = ws.maxRow();
+  for (let r = 2; r <= maxRow + 1; r++) {
+    if (ws.read(r, cM) === null) return r;
+  }
+  return maxRow + 1;
+}
+
+/**
+ * One placer for all three sheets. e.unit is the egg or bird label ("1",
+ * "1a"). e.values is {label: value} - anything at all, including labels the
+ * sheet has never seen.
+ */
+function placeSampling(book, e, problems, sheetKey) {
+  const sheetName = SAMPLING_SHEETS[sheetKey];
+  const ws = book.sheet(sheetName);
+  if (!ws) { problems.push(`${e.month} pen ${e.pen}: no '${sheetName}' sheet in this file`); return false; }
+
+  // BACKWARD COMPATIBILITY. Two things can still be in the old shape:
+  //   - an entry captured before this update (egg number, no month, no pen)
+  //   - a master whose Egg Quality sheet is still the old flat table
+  // Either one falls back to the original placement rather than being
+  // reported as a failure, so nothing already on a phone is stranded.
+  if (sheetKey === "eggquality") {
+    const h = headerMap(ws);
+    const oldSheet = h["month"] === undefined && h["egg number"] !== undefined;
+    const oldEntry = !e.month || !e.unit;
+    if (oldSheet || oldEntry) return placeEggQualityFlat(book, e, problems, oldSheet);
+  }
+
+  const unit = String(e.unit || e.egg || e.bird || "").trim();
+  if (!e.month || !e.pen || !unit) {
+    problems.push(`${sheetName}: an entry was missing its month, pen or label`); return false;
+  }
+  let row = samplingRow(ws, e.month, e.pen, unit);
+  const isNew = row === null;
+  if (isNew) row = nextSamplingRow(ws);
+
+  // Key columns are written once, on the row's first pass, and never
+  // rewritten - so the lab pass a week later cannot move the row.
+  if (isNew) {
+    ws.write(row, columnFor(ws, "Month"), e.month);
+    ws.write(row, columnFor(ws, "Pen"), Number(e.pen));
+    ws.write(row, columnFor(ws, sheetKey === "eggquality" ? "Egg" : "Bird"), unit);
+  }
+  if (e.date) ws.write(row, columnFor(ws, "Date"), e.date);
+
+  let wrote = 0;
+  for (const [label, value] of Object.entries(e.values || {})) {
+    if (value === null || value === undefined || value === "") continue;
+    const n = numOrNull(value);
+    if (ws.write(row, columnFor(ws, label), n === null ? String(value) : n)) wrote++;
+  }
+  if (!wrote && !isNew) {
+    problems.push(`${sheetName} ${e.month} pen ${e.pen} ${unit}: nothing to write`);
+    return false;
+  }
+  return true;
 }
 
 const PLACERS = {
   egg: placeEgg, feed: placeFeed, mortality: placeMortality,
-  bodyweight: placeBodyWeight, eggquality: placeEggQuality,
+  bodyweight: placeBodyWeight,
+  eggquality: (b, e, p) => placeSampling(b, e, p, "eggquality"),
+  slaughter: (b, e, p) => placeSampling(b, e, p, "slaughter"),
+  defeathering: (b, e, p) => placeSampling(b, e, p, "defeathering"),
 };
 
 /* ---------------------------------------------------------------- public */
 
-/** THE DUPLICATE RULE lives here: this house, unsynced only, oldest first.
- *  Demo entries ARE included - the demo is meant to produce a real export -
- *  and they are excluded from Sync instead, in DB.unsyncedEntries(). */
-function pendingFor(entries, house) {
+/**
+ * THE DUPLICATE RULE lives here, and it depends on WHICH workbook is stored.
+ *
+ * Real master (downloaded via Load latest): unsynced only. A fresh download
+ * already contains everything this device has synced, so re-applying it
+ * would write the same numbers twice.
+ *
+ * Template (no access to the real file): EVERYTHING, synced or not. Nothing
+ * ever back-fills a template, so filtering out synced entries handed the
+ * person a blank workbook the moment their first Sync succeeded - Sync
+ * working was what broke Export. There is no double-count risk here because
+ * the template starts empty and is never refreshed from the server.
+ *
+ * Demo entries are included either way - the demo is meant to produce a real
+ * export - and they are excluded from Sync instead, in DB.unsyncedEntries().
+ */
+function pendingFor(entries, house, includeSynced) {
   return entries
-    .filter((e) => e.house === house && !e.synced)
+    .filter((e) => e.house === house && (includeSynced || !e.synced))
     .sort((a, b) => String(a.savedAt || "").localeCompare(String(b.savedAt || "")));
 }
 
-function applyPending(book, entries, house) {
+function applyPending(book, entries, house, includeSynced) {
   const problems = [];
   let placed = 0;
-  for (const e of pendingFor(entries, house)) {
+  for (const e of pendingFor(entries, house, includeSynced)) {
     const fn = PLACERS[e.type];
     if (!fn) { problems.push(`${e.date}: unknown entry type '${e.type}'`); continue; }
     try {
@@ -311,7 +483,9 @@ async function buildMasterExport(house) {
   if (!stored) return null;
   const book = new XlsxPatcher(stored.data);
   const entries = await DB.allEntries();
-  const { placed, problems } = applyPending(book, entries, house);
+  // See pendingFor(): a template needs every entry, a real master only the
+  // ones the server hasn't got yet.
+  const { placed, problems } = applyPending(book, entries, house, !!stored.isTemplate);
   writeNotPlacedSheet(book, problems, placed);
   const short = house.replace(/^House\s+/, "");
   const stamp = new Date().toISOString().slice(0, 10);
@@ -329,5 +503,6 @@ if (typeof module !== "undefined") {
   module.exports = {
     buildMasterExport, applyPending, pendingFor, dayCol, penIndex,
     feedWeekCol, parseWeekRange, writeNotPlacedSheet, ddMon, MASTER_SHEETS, GEO,
+    placeSampling, columnFor, samplingRow, headerMap, SAMPLING_SHEETS,
   };
 }

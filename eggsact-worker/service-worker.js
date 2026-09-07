@@ -9,7 +9,7 @@ installed while offline had no embedded house layouts and Export had nothing
 to write into. Bump CACHE_NAME whenever a shell file changes.
 */
 
-const CACHE_NAME = "eggsact-worker-v6";
+const CACHE_NAME = "eggsact-worker-v7";
 const SHELL_FILES = [
   "./",
   "./index.html",
@@ -23,6 +23,9 @@ const SHELL_FILES = [
   "./js/xlsx-export.js",
   "./js/sync.js",
   "./js/templates.js",
+  "./templates/Nketlwane.xlsx",
+  "./templates/Tsholanang.xlsx",
+  "./templates/Judi.xlsx",
   "./js/app.js",
   "./js/vendor/xlsx.full.min.js",
 ];

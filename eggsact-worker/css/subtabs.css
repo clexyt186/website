@@ -1,0 +1,16 @@
+/* Sub-tabs inside a capture panel (Weights / Parameters). Appended to
+   style.css - keep your existing style.css and add these rules to the end. */
+.subtabs { display: flex; gap: 6px; margin: 12px 0; }
+.subtab-btn {
+  flex: 1; padding: 8px 10px; font-size: 13px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--dim); border-radius: 8px;
+}
+.subtab-btn.active {
+  background: rgba(0, 229, 199, 0.12);
+  border-color: var(--accent); color: var(--accent); font-weight: 600;
+}
+.extra-param {
+  border-top: 1px dashed var(--border);
+  margin-top: 14px; padding-top: 10px;
+}

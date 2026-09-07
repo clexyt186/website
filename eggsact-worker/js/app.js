@@ -141,8 +141,10 @@ function switchTab(tab) {
   if (tab === "mydata") { renderMyData(); return; }
   if (tab === "messages") { renderMessages(); return; }
   const focusMap = { egg: "#f-pen", feed: "#feed-pen", mortality: "#mort-pen",
-                    bodyweight: "#bw-pen", eggquality: "#eq-egg" };
-  $(focusMap[tab]).focus();
+                    bodyweight: "#bw-pen", eggquality: "#eqw-pen",
+                    slaughter: "#slw-pen", defeathering: "#df-pen" };
+  const target = focusMap[tab] && $(focusMap[tab]);
+  if (target) target.focus();
 }
 
 // ---------------------------------------------------------------- My Data
@@ -160,7 +162,9 @@ async function renderMyData() {
   } else {
     listEl.innerHTML = recent.map((e) => {
       const label = { egg: "Eggs", feed: "Feed", mortality: "Death", bodyweight: "Weight", eggquality: "Quality" }[e.type];
-      const detail = e.type === "eggquality" ? `egg ${e.egg}` : `pen ${e.pen}`;
+      const detail = e.unit !== undefined && e.unit !== null
+        ? `pen ${e.pen} ${e.unit}`
+        : (e.type === "eggquality" ? `egg ${e.egg}` : `pen ${e.pen}`);
       return `<div class="mydata-row"><span>${e.date}</span><span>${label}</span><span>${e.house.replace("House ", "")}</span><span>${detail}</span><span>${e.synced ? "✓ synced" : "pending"}</span></div>`;
     }).join("");
   }
@@ -924,12 +928,19 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#save-bw-btn").addEventListener("click", saveBodyWeight);
 
   // Egg Quality
-  chainEnter("#eq-egg", "#eq-diameter"); chainEnter("#eq-diameter", "#eq-height");
-  chainEnter("#eq-height", "#eq-top"); chainEnter("#eq-top", "#eq-bottom");
-  chainEnter("#eq-bottom", "#eq-equater"); chainEnter("#eq-equater", "#eq-force");
-  chainEnter("#eq-force", "#eq-displacement"); chainEnter("#eq-displacement", "#eq-eggweight");
-  chainEnter("#eq-eggweight", null, saveEggQuality);
-  $("#save-eq-btn").addEventListener("click", saveEggQuality);
+  // The old single-pass Egg Quality form was replaced by the monthly
+  // Weights/Parameters tabs (wireSamplingTabs). Its fields no longer exist
+  // in index.html, so wiring them would throw on the very first line and
+  // kill every listener registered after it. Guarded rather than deleted so
+  // an older index.html still works.
+  if ($("#eq-egg")) {
+    chainEnter("#eq-egg", "#eq-diameter"); chainEnter("#eq-diameter", "#eq-height");
+    chainEnter("#eq-height", "#eq-top"); chainEnter("#eq-top", "#eq-bottom");
+    chainEnter("#eq-bottom", "#eq-equater"); chainEnter("#eq-equater", "#eq-force");
+    chainEnter("#eq-force", "#eq-displacement"); chainEnter("#eq-displacement", "#eq-eggweight");
+    chainEnter("#eq-eggweight", null, saveEggQuality);
+    $("#save-eq-btn").addEventListener("click", saveEggQuality);
+  }
 
   $("#sync-btn").addEventListener("click", handleSync);
   // Emergency Recovery button - added next to Sync/Export so it's always
@@ -945,6 +956,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   $("#export-btn").addEventListener("click", handleExport);
+  wireSamplingTabs();
   $("#settings-btn").addEventListener("click", saveServerUrl);
   $("#install-btn").addEventListener("click", handleInstallButton);
   $("#install-modal-later").addEventListener("click", () => $("#install-modal").classList.add("hidden"));
@@ -1098,4 +1110,269 @@ function setupAutoUpdate() {
     window.addEventListener("online", check);
     check();
   }).catch(() => {});
+}
+
+/* ==================================================================
+   MONTHLY SAMPLING TABS - Egg Quality, Slaughter, Defeathering
+
+   All three share one shape: one row per sampled egg or bird, keyed by
+   Month + Pen + Egg/Bird. That is what lets a pen be sampled once this
+   month and three times next month with nothing to reconfigure - three
+   eggs is simply three rows, labelled 1a, 1b, 1c.
+
+   Egg Quality is captured in two passes: weights on the day, lab
+   parameters a week later. The second pass finds the egg by month + pen +
+   egg label and fills its columns, so nothing is retyped and nothing is
+   overwritten.
+
+   NEW PARAMETERS
+   The parameter list is not fixed anywhere. Type a name once and it
+   becomes a column - in the export, in the phone's own file, and in the
+   master when it syncs. Names added on this device are remembered so they
+   appear as fields next time.
+   ================================================================== */
+
+const EQ_PARAMS = ["Diameter", "Height", "top", "bottom", "equater",
+                   "Force at Break (Standard)", "Displacement at Break (Standard)"];
+const SL_PARAMS = ["Fat Pad (g)", "Liver (g)"];
+const UNIT_SUFFIX = ["a", "b", "c"];
+
+function thisMonth() { return new Date().toISOString().slice(0, 7); }
+
+/** "1" when a pen is sampled once, "1a"/"1b"/"1c" when it's sampled more.
+ *  The label is the pen number plus a letter, so it reads the same on the
+ *  phone, in the export and in the master. */
+function unitLabel(pen, index, perPen) {
+  return perPen <= 1 ? String(pen) : `${pen}${UNIT_SUFFIX[index] || ""}`;
+}
+
+function fillUnitSelect(selectId, penId, perPenId) {
+  const sel = $(selectId);
+  if (!sel) return;
+  const pen = parseInt($(penId).value, 10);
+  const perPen = parseInt($(perPenId).value, 10) || 1;
+  const current = sel.value;
+  sel.innerHTML = "";
+  for (let i = 0; i < perPen; i++) {
+    const label = unitLabel(pen || 1, i, perPen);
+    const o = document.createElement("option");
+    o.value = o.textContent = label;
+    sel.appendChild(o);
+  }
+  if ([...sel.options].some((o) => o.value === current)) sel.value = current;
+}
+
+/** Parameter labels this device knows about: the built-in list plus any the
+ *  person has added. Stored locally so a new organ stays on the form. */
+function extraParams(key) {
+  try { return JSON.parse(localStorage.getItem("eggsact_params_" + key) || "[]"); }
+  catch (e) { return []; }
+}
+function addExtraParam(key, label) {
+  const list = extraParams(key);
+  if (!list.includes(label)) {
+    list.push(label);
+    localStorage.setItem("eggsact_params_" + key, JSON.stringify(list));
+  }
+}
+function paramList(key, base) { return base.concat(extraParams(key)); }
+
+/** Renders a numeric field per parameter, with Enter chaining down the list
+ *  and the save button on the last one - same behaviour as every other tab. */
+function renderParamFields(containerId, key, base, onSave) {
+  const box = $(containerId);
+  if (!box) return;
+  const labels = paramList(key, base);
+  box.innerHTML = "";
+  labels.forEach((label, i) => {
+    const id = `${key}-p${i}`;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<label for="${id}">${label}</label>` +
+      `<input id="${id}" type="text" inputmode="decimal" class="numeric" data-label="${label}">`;
+    box.appendChild(row);
+  });
+  labels.forEach((label, i) => {
+    const next = i + 1 < labels.length ? `#${key}-p${i + 1}` : null;
+    chainEnter(`#${key}-p${i}`, next, next ? null : onSave);
+  });
+  wireNumericFields();
+}
+
+function collectParams(containerId) {
+  const values = {};
+  document.querySelectorAll(`${containerId} input[data-label]`).forEach((el) => {
+    if (el.value !== "") values[el.dataset.label] = parseNum(el.value);
+  });
+  return values;
+}
+
+function clearParams(containerId) {
+  document.querySelectorAll(`${containerId} input[data-label]`).forEach((el) => { el.value = ""; });
+}
+
+/** One save path for all three types. Replaces an existing capture for the
+ *  same month+pen+unit rather than silently adding a second one. */
+async function saveSampling(type, opts) {
+  const house = $("#house-select").value;
+  const month = opts.month;
+  const pen = parseInt(opts.pen, 10);
+  const unit = opts.unit;
+  if (!month) { flashStatus("Pick a month first.", true); return false; }
+  if (!pen) { flashStatus("Enter a pen number.", true); return false; }
+  if (!unit) { flashStatus("Pick which egg or bird this is.", true); return false; }
+  if (!Object.keys(opts.values).length) { flashStatus("Nothing entered.", true); return false; }
+
+  const all = await DB.allEntries();
+  const dup = all.find((e) => e.type === type && e.house === house && e.month === month &&
+                              Number(e.pen) === pen && String(e.unit) === String(unit) &&
+                              JSON.stringify(Object.keys(e.values || {}).sort()) ===
+                              JSON.stringify(Object.keys(opts.values).sort()));
+  if (dup) {
+    if (!confirm(`Pen ${pen} ${unit} already has these readings for ${month}. Replace them?`)) return false;
+    await DB.deleteEntry(dup.id);
+  }
+  await DB.addEntry({
+    type, house, month, date: $("#f-date").value || today(),
+    pen, unit, values: opts.values, capturedBy: state.person,
+  });
+  return true;
+}
+
+/** Moves to the next egg/bird in the pen, then on to the next pen. */
+function advanceUnit(selectId, penId, perPenId) {
+  const sel = $(selectId);
+  const perPen = parseInt($(perPenId).value, 10) || 1;
+  const i = sel.selectedIndex;
+  if (i + 1 < perPen) { sel.selectedIndex = i + 1; return; }
+  const pen = parseInt($(penId).value, 10) || 0;
+  $(penId).value = pen + 1;
+  fillUnitSelect(selectId, penId, perPenId);
+  sel.selectedIndex = 0;
+}
+
+async function saveEqWeight() {
+  const v = $("#eqw-weight").value;
+  if (v === "") { flashStatus("Enter a weight.", true); return; }
+  const ok = await saveSampling("eggquality", {
+    month: $("#samp-month").value, pen: $("#eqw-pen").value, unit: $("#eqw-egg").value,
+    values: { "Individual Egg weight": parseNum(v) },
+  });
+  if (!ok) return;
+  flashStatus(`Saved pen ${$("#eqw-pen").value} egg ${$("#eqw-egg").value}.`);
+  $("#eqw-weight").value = "";
+  advanceUnit("#eqw-egg", "#eqw-pen", "#eq-per-pen");
+  $("#eqw-weight").focus();
+  refreshStatus();
+}
+
+async function saveEqParams() {
+  const ok = await saveSampling("eggquality", {
+    month: $("#samp-month").value, pen: $("#eqp-pen").value, unit: $("#eqp-egg").value,
+    values: collectParams("#eqp-fields"),
+  });
+  if (!ok) return;
+  flashStatus(`Saved parameters for pen ${$("#eqp-pen").value} egg ${$("#eqp-egg").value}.`);
+  clearParams("#eqp-fields");
+  advanceUnit("#eqp-egg", "#eqp-pen", "#eq-per-pen");
+  const first = document.querySelector("#eqp-fields input");
+  if (first) first.focus();
+  refreshStatus();
+}
+
+async function saveSlWeight() {
+  const v = $("#slw-weight").value;
+  if (v === "") { flashStatus("Enter a weight.", true); return; }
+  const ok = await saveSampling("slaughter", {
+    month: $("#sl-month").value, pen: $("#slw-pen").value, unit: $("#slw-bird").value,
+    values: { "Body Weight (kg)": parseNum(v) },
+  });
+  if (!ok) return;
+  flashStatus(`Saved pen ${$("#slw-pen").value} bird ${$("#slw-bird").value}.`);
+  $("#slw-weight").value = "";
+  advanceUnit("#slw-bird", "#slw-pen", "#sl-per-pen");
+  $("#slw-weight").focus();
+  refreshStatus();
+}
+
+async function saveSlParams() {
+  const ok = await saveSampling("slaughter", {
+    month: $("#sl-month").value, pen: $("#slp-pen").value, unit: $("#slp-bird").value,
+    values: collectParams("#slp-fields"),
+  });
+  if (!ok) return;
+  flashStatus(`Saved parameters for pen ${$("#slp-pen").value} bird ${$("#slp-bird").value}.`);
+  clearParams("#slp-fields");
+  advanceUnit("#slp-bird", "#slp-pen", "#sl-per-pen");
+  const first = document.querySelector("#slp-fields input");
+  if (first) first.focus();
+  refreshStatus();
+}
+
+async function saveDefeathering() {
+  const v = $("#df-weight").value;
+  if (v === "") { flashStatus("Enter a weight.", true); return; }
+  const ok = await saveSampling("defeathering", {
+    month: $("#df-month").value, pen: $("#df-pen").value, unit: $("#df-bird").value,
+    values: { "Weight (kg)": parseNum(v) },
+  });
+  if (!ok) return;
+  flashStatus(`Saved pen ${$("#df-pen").value} bird ${$("#df-bird").value}.`);
+  $("#df-weight").value = "";
+  advanceUnit("#df-bird", "#df-pen", "#sl-per-pen");
+  $("#df-weight").focus();
+  refreshStatus();
+}
+
+function switchSubTab(panelId, sub) {
+  document.querySelectorAll(`#${panelId} .subtab-btn`).forEach((b) =>
+    b.classList.toggle("active", b.dataset.sub === sub));
+  document.querySelectorAll(`#${panelId} [id^="sub-"]`).forEach((p) =>
+    p.classList.toggle("hidden", p.id !== `sub-${sub}`));
+}
+
+function wireSamplingTabs() {
+  if (!$("#samp-month")) return;   // panels not on this build of index.html
+  $("#samp-month").value = thisMonth();
+  $("#sl-month").value = thisMonth();
+  $("#df-month").value = thisMonth();
+
+  for (const [sel, pen, per] of [["#eqw-egg", "#eqw-pen", "#eq-per-pen"],
+                                 ["#eqp-egg", "#eqp-pen", "#eq-per-pen"],
+                                 ["#slw-bird", "#slw-pen", "#sl-per-pen"],
+                                 ["#slp-bird", "#slp-pen", "#sl-per-pen"],
+                                 ["#df-bird", "#df-pen", "#sl-per-pen"]]) {
+    fillUnitSelect(sel, pen, per);
+    $(pen).addEventListener("input", () => fillUnitSelect(sel, pen, per));
+    $(per).addEventListener("change", () => fillUnitSelect(sel, pen, per));
+  }
+
+  renderParamFields("#eqp-fields", "eq", EQ_PARAMS, saveEqParams);
+  renderParamFields("#slp-fields", "sl", SL_PARAMS, saveSlParams);
+
+  document.querySelectorAll(".subtab-btn").forEach((b) =>
+    b.addEventListener("click", () =>
+      switchSubTab(b.closest(".tab-panel").id, b.dataset.sub)));
+
+  $("#slp-add-btn").addEventListener("click", () => {
+    const label = $("#slp-new-label").value.trim();
+    if (!label) { flashStatus("Type the parameter's name first.", true); return; }
+    addExtraParam("sl", label);
+    $("#slp-new-label").value = "";
+    renderParamFields("#slp-fields", "sl", SL_PARAMS, saveSlParams);
+    flashStatus(`"${label}" added - it gets its own column from now on.`);
+  });
+
+  chainEnter("#eqw-pen", "#eqw-weight");
+  chainEnter("#eqw-weight", null, saveEqWeight);
+  chainEnter("#slw-pen", "#slw-weight");
+  chainEnter("#slw-weight", null, saveSlWeight);
+  chainEnter("#df-pen", "#df-weight");
+  chainEnter("#df-weight", null, saveDefeathering);
+
+  $("#save-eqw-btn").addEventListener("click", saveEqWeight);
+  $("#save-eqp-btn").addEventListener("click", saveEqParams);
+  $("#save-slw-btn").addEventListener("click", saveSlWeight);
+  $("#save-slp-btn").addEventListener("click", saveSlParams);
+  $("#save-df-btn").addEventListener("click", saveDefeathering);
 }
