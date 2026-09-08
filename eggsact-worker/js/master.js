@@ -58,7 +58,19 @@ const MONTHS3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","No
 function ymd(s) { const [y, m, d] = String(s).split("-").map(Number); return { y, m, d }; }
 function ddMon(s) { const { m, d } = ymd(s); return `${String(d).padStart(2, "0")}${MONTHS3[m - 1]}`; }
 
-function numOrNull(v) {
+/*
+NAMED cellNum, NOT numOrNull.
+
+app.js has its own top-level numOrNull(id) which takes an ELEMENT SELECTOR
+and reads that input's value. index.html loads app.js after this file, so its
+definition silently replaced this one - and every placer here then called
+querySelector("5"), threw "5 is not a valid selector", and placed nothing.
+Every single entry failed, with the error only visible in the export message.
+
+Both files are plain scripts sharing one global scope, so a shared name is a
+shared function. Keep this one unique.
+*/
+function cellNum(v) {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(String(v).replace(/,/g, "."));
   return Number.isFinite(n) ? n : null;
@@ -161,13 +173,13 @@ function placeEgg(book, e, problems) {
   const row = penIndex(ws, GEO.firstRow)[Number(e.pen)];
   if (!row) { problems.push(`${e.date} pen ${e.pen}: pen isn't in this file`); return false; }
   const o = GEO.egg;
-  const eggs = numOrNull(e.eggs), wt = numOrNull(e.weight);
+  const eggs = cellNum(e.eggs), wt = cellNum(e.weight);
   ws.write(row, col + o.eggs, eggs);
   ws.write(row, col + o.weight, wt);
   // Average is a stored value in this layout, exactly as the desktop writes it
   ws.write(row, col + o.avg, (eggs && wt) ? Math.round((wt / eggs) * 100) / 100 : null);
-  ws.write(row, col + o.nonlayer, numOrNull(e.nonlayer));
-  ws.write(row, col + o.rejects, numOrNull(e.rejects));
+  ws.write(row, col + o.nonlayer, cellNum(e.nonlayer));
+  ws.write(row, col + o.rejects, cellNum(e.rejects));
   ws.write(row, col + o.reason, e.reason || null);
   return true;
 }
@@ -183,7 +195,7 @@ function placeFeed(book, e, problems) {
   const row = penIndex(ws, GEO.feedFirstRow)[Number(e.pen)];
   if (!row) { problems.push(`${e.date} pen ${e.pen}: pen isn't in the feed sheet`); return false; }
   // Orts only. Bird # and Allocation are never written from a worker device.
-  ws.write(row, col + GEO.feed.orts, numOrNull(e.orts));
+  ws.write(row, col + GEO.feed.orts, cellNum(e.orts));
   return true;
 }
 
@@ -194,7 +206,7 @@ function placeMortality(book, e, problems) {
   ws.write(r, 1, ddMon(e.date));
   ws.write(r, 2, e.date);
   ws.write(r, 3, Number(e.pen));
-  ws.write(r, 4, numOrNull(e.weight));
+  ws.write(r, 4, cellNum(e.weight));
   ws.write(r, 5, e.reason || null);
   return true;
 }
@@ -206,7 +218,7 @@ function placeBodyWeight(book, e, problems) {
   for (const [pc, hc, wc] of [[1, 2, 3], [6, 7, 8]]) {
     for (let r = 2; r <= maxRow; r++) {
       if (Number(ws.read(r, pc)) === Number(e.pen) && String(ws.read(r, hc)) === String(e.hen)) {
-        ws.write(r, wc, numOrNull(e.weight));
+        ws.write(r, wc, cellNum(e.weight));
         return true;
       }
     }
@@ -271,7 +283,7 @@ function placeEggQualityLegacy(book, e, problems) {
   if (!row) { problems.push(`egg ${eggNo}: egg number isn't in this file`); return false; }
   let placed = 0;
   for (const [field, label] of Object.entries(wanted)) {
-    const val = numOrNull(src[field]);
+    const val = cellNum(src[field]);
     if (val === null) continue;
     const key = Object.keys(headers).find((h) => h.startsWith(label));
     if (key) { ws.write(row, headers[key], val); placed++; }
@@ -394,7 +406,7 @@ function placeSampling(book, e, problems, sheetKey) {
   let wrote = 0;
   for (const [label, value] of Object.entries(e.values || {})) {
     if (value === null || value === undefined || value === "") continue;
-    const n = numOrNull(value);
+    const n = cellNum(value);
     if (ws.write(row, columnFor(ws, label), n === null ? String(value) : n)) wrote++;
   }
   if (!wrote && !isNew) {

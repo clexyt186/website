@@ -9,7 +9,7 @@ installed while offline had no embedded house layouts and Export had nothing
 to write into. Bump CACHE_NAME whenever a shell file changes.
 */
 
-const CACHE_NAME = "eggsact-worker-v8";
+const CACHE_NAME = "eggsact-worker-v9";
 const SHELL_FILES = [
   "./",
   "./index.html",
