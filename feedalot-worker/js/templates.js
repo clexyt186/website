@@ -22,7 +22,7 @@ const TEMPLATE_FILES = {
   "Group 5 - Merino Mob": "templates/Group_5.xlsx",
 };
 
-const TEMPLATE_VERSION = 2;
+const TEMPLATE_VERSION = 3;
 
 /**
  * Ensures this group has a usable stored workbook.

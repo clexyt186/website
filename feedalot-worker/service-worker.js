@@ -1,4 +1,4 @@
-const CACHE_NAME = "feedalot-worker-v5";
+const CACHE_NAME = "feedalot-worker-v6";
 const SHELL_FILES = [
   "./",
   "./index.html",

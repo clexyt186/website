@@ -1,0 +1,7 @@
+# Netlify: never let a browser cache the service worker itself.
+# If it does, the phone fetches a stale copy, sees no change, and the app
+# never updates - which is why deploys could appear to do nothing.
+/eggsact-worker/service-worker.js
+  Cache-Control: no-cache
+/feedalot-worker/service-worker.js
+  Cache-Control: no-cache

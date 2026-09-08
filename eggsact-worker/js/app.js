@@ -481,7 +481,14 @@ async function handleExportMaster(house) {
   }
   let msg = `Master file downloaded (${result.placed} of your entries included).`;
   if (result.problems.length) {
-    msg += ` ${result.problems.length} couldn't be placed - see the 'Not yet placed' notes.`;
+    // Say WHY, not just how many. An entry that cannot be placed used to be
+    // a number the person had to go hunting for in a sheet, which is how
+    // "the weights aren't in my export" went unexplained for so long.
+    msg += ` ${result.problems.length} couldn't be placed: ${result.problems[0]}` +
+           (result.problems.length > 1 ? ` (+${result.problems.length - 1} more, see the 'Not yet placed' sheet)` : "");
+    flashStatus(msg, true);
+    refreshStatus();
+    return;
   }
   flashStatus(msg);
   refreshStatus();

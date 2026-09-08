@@ -10,6 +10,18 @@ service worker's shell, so they are cached once and work offline exactly the
 same way - and replacing a template is replacing a file, not regenerating a
 blob.
 
+DATE COVERAGE - THE REASON FOR v4
+A template can only hold a date it has a column for; master.js deliberately
+never invents one. The v3 templates were built from the rebuilt masters,
+which start at the trial's week 1 (1 November), so anything captured BEFORE
+that date had nowhere to go - Eggs and Feed silently failed to place while
+Weights and Deaths worked, because those two need no date column.
+
+The template is a capture surface, not the trial's calendar. It now runs
+03 Aug 2026 to 11 Apr 2027, so today's captures land and the whole November
+trial is covered. The MASTER still starts at week 1 on 1 November - that is
+the trial's own numbering and it is unchanged.
+
 WHAT A TEMPLATE IS
 The house workbook with nothing captured in it: every day column, every
 weekly rollup, all 192 pens with their treatment numbers, the body-weight
@@ -32,7 +44,7 @@ template stored would otherwise keep it forever: ensureTemplatesInstalled()
 used to skip any house that had ANY workbook stored, so an existing device
 took every code update and still held the old layout.
 */
-const TEMPLATE_VERSION = 3;
+const TEMPLATE_VERSION = 4;
 
 /**
  * Ensures every house this device can reach has a usable stored workbook.

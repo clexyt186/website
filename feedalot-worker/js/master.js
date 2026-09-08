@@ -97,6 +97,35 @@ function faBlockLastRow(sheet, idCol, dataStart) {
   return r - 1;
 }
 
+
+/**
+ * Adds a sheep to a block when it isn't there yet.
+ *
+ * WHY THIS IS BOUNDED
+ * The weighing sheet stacks blocks vertically with the SAME sheep IDs in
+ * each: weights, then ADG, then FAMACHA and BCS. Writing to "the next row"
+ * would drop a sheep straight into the ADG table. So a row is only used if
+ * it is genuinely free: not merged (a merged cell is the next block's
+ * label), and empty right across the block's width.
+ *
+ * If the block is full it refuses and says exactly what to do, rather than
+ * writing somewhere wrong. Removing a sheep needs nothing from here - every
+ * lookup scans the sheet's real rows, so deleting a row in Excel is enough.
+ */
+function faAppendToBlock(sheet, id, idCol, dataStart, widthCols) {
+  const last = faBlockLastRow(sheet, idCol, dataStart);
+  const r = last + 1;
+  if (typeof sheet.isMerged === "function" && sheet.isMerged(r, idCol)) return null;
+  const width = widthCols || 8;
+  for (let c = idCol; c < idCol + width; c++) {
+    const v = sheet.read(r, c);
+    if (v !== null && v !== "") return null;         // next block starts here
+    if (typeof sheet.isMerged === "function" && sheet.isMerged(r, c)) return null;
+  }
+  if (!sheet.write(r, idCol, String(id).trim())) return null;
+  return r;
+}
+
 function faFindInBlock(sheet, id, idCol, dataStart) {
   const target = faNorm(id);
   const last = faBlockLastRow(sheet, idCol, dataStart);
@@ -153,8 +182,13 @@ function faNextFreeRow(sheet, dataStart, col = 1) {
 function faPlaceWeighing(book, e, problems) {
   const ws = book.sheet(FA_SHEETS.weighing);
   if (!ws) { problems.push(`${e.date}: no weighing sheet`); return false; }
-  const row = faFindInBlock(ws, e.sheepId, FA.weighIdCol, FA.weighDataStart);
-  if (!row) { problems.push(`${e.date} ${e.sheepId}: not in the weighing sheet`); return false; }
+  let row = faFindInBlock(ws, e.sheepId, FA.weighIdCol, FA.weighDataStart);
+  if (!row) row = faAppendToBlock(ws, e.sheepId, FA.weighIdCol, FA.weighDataStart);
+  if (!row) {
+    problems.push(`${e.date} ${e.sheepId}: not in the weighing sheet, and the block is full - ` +
+                  `insert a row in the weighing sheet in Excel and sync again`);
+    return false;
+  }
   const col = faDateCol(ws, FA.weighHeaderRow, FA.weighFirstCol, e.date);
   if (!col) { problems.push(`${e.date} ${e.sheepId}: no column for that date yet`); return false; }
   ws.write(row, col, Number(e.weight));
@@ -166,8 +200,13 @@ function faPlaceFamacha(book, e, problems) {
   if (!ws) { problems.push(`${e.date}: no weighing sheet`); return false; }
   const b = faFamachaCols(ws);
   if (!b) { problems.push(`${e.date}: no FAMACHA block found`); return false; }
-  const row = faFindInBlock(ws, e.sheepId, b.idCol, b.dataStart);
-  if (!row) { problems.push(`${e.date} ${e.sheepId}: not in the FAMACHA block`); return false; }
+  let row = faFindInBlock(ws, e.sheepId, b.idCol, b.dataStart);
+  if (!row) row = faAppendToBlock(ws, e.sheepId, b.idCol, b.dataStart, 4);
+  if (!row) {
+    problems.push(`${e.date} ${e.sheepId}: not in the FAMACHA block, and the block is full - ` +
+                  `insert a row there in Excel and sync again`);
+    return false;
+  }
   const col = faDateCol(ws, b.headerRow, b.firstDateCol, e.date);
   if (!col) { problems.push(`${e.date} ${e.sheepId}: no FAMACHA column for that date yet`); return false; }
   ws.write(row, col, Number(e.score));
@@ -301,6 +340,6 @@ async function buildGroupExport(group) {
 if (typeof module !== "undefined") {
   module.exports = {
     buildGroupExport, applyPending, pendingFor, faFindInBlock, faBlockLastRow,
-    faDateCol, faFamachaCols, faSameDay, FA_SHEETS, FA,
+    faDateCol, faFamachaCols, faSameDay, faAppendToBlock, FA_SHEETS, FA,
   };
 }
