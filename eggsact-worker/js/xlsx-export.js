@@ -41,7 +41,15 @@ const SAMPLING_TYPES = ["eggquality", "slaughter", "defeathering"];
 const UNIT_LABEL = { eggquality: "Egg", slaughter: "Bird", defeathering: "Bird" };
 
 const HEADERS = {
-  egg: ["Pen Number", "Number of Eggs", "Weight", "Non Layer", "Number of Rejects", "Reason"],
+  // "Average Weight" is carried for READABILITY only. The home PC recomputes
+  // it from eggs and weight when it imports (engine.py submit()), so this
+  // column is never the source of truth - but without it the file the phone
+  // sends looked like it had lost the average. _map_headers matches header
+  // names EXACTLY against EGG_HEADER_ALIASES, and "average weight" is not in
+  // that map, so the importer ignores this column rather than mistaking it
+  // for "weight".
+  egg: ["Pen Number", "Number of Eggs", "Weight", "Average Weight",
+        "Non Layer", "Number of Rejects", "Reason"],
   // Feed: ONLY Pen + Orts. Bird#/Allocation are never included from a worker
   // device - it has no reliable way to know the current correct values, and
   // the master's importer is built to only touch the Orts cell when those
@@ -53,8 +61,14 @@ const HEADERS = {
 
 function fieldsFor(type, entry) {
   switch (type) {
-    case "egg":
-      return [entry.pen, entry.eggs, entry.weight, entry.nonlayer, entry.rejects, entry.reason || ""];
+    case "egg": {
+      const eggsN = Number(String(entry.eggs).replace(/,/g, "."));
+      const wtN = Number(String(entry.weight).replace(/,/g, "."));
+      const avg = Number.isFinite(eggsN) && Number.isFinite(wtN) && eggsN
+        ? Math.round((wtN / eggsN) * 100) / 100 : "";
+      return [entry.pen, entry.eggs, entry.weight, avg,
+              entry.nonlayer, entry.rejects, entry.reason || ""];
+    }
     case "feed":
       return [entry.pen, entry.orts];
     case "bodyweight":
